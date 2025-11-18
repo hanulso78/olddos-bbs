@@ -39,6 +39,8 @@ Before installation, you will need the hanulso.cfg file. Please create it as fol
 
 SCREENSHOT
 -
-<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/6823c6c3-4e6f-4154-ad5a-dd53cb5997a1" />
-<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/b4629232-faea-4082-b20a-02e2c7a6d644" />
-<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/4d12cd6f-3724-419b-b246-e38293afb83d" />
+<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/7e9b6b06-dbe8-4587-a79e-c77295dfa7db" />
+<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/c1919b16-0487-4b2c-8026-2b2dafb58ec1" />
+<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/df5e2bb2-b220-4701-916e-d28b977600e2" />
+<img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/a678b5da-d84f-4b62-908c-a467c53ffc83" />
+
