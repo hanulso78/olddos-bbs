@@ -27,7 +27,7 @@ Before installation, you will need the hanulso.cfg file. Please create it as fol
 		<host>smtp.naver.com</host>
 		<port>587</port>
 		<user>user@naver.com</user>
-		<password>user password</password>
+		<password>user_password</password>
 	</mailserver>
 	<sysop>
 		<user>admin</user>	<!-- admin -->
