@@ -1,6 +1,7 @@
-BBS 사용자가 패스워드 분실시 자동으로 셋팅하여 보내는 기능에 사용함..
+* BBS 사용자가 패스워드 분실시 자동으로 셋팅하여 보내는 기능에 사용함
 
-## openssl 빌드
+openssl 빌드
+================
 wget -c https://www.openssl.org/source/openssl-1.0.2p.tar.gz
 tar -xzvf openssl-1.0.2p.tar.gz
 cd openssl-1.0.2p/
@@ -8,13 +9,15 @@ cd openssl-1.0.2p/
 make
 su make install
 
-## mailsend 빌드
+mailsend 빌드
+================
 cd mailsend-1.19
 ./configure --with-openssl=/usr/local/ssl
 make
 cp ./mailsend ../../../bin
 
-## 테스트
+테스트
+================
 /tmp/a.txt 에 다음의 파일을 작성..
 
   안녕하세요.
