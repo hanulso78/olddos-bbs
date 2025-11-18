@@ -1,0 +1,8 @@
+[2J[;H
+                        ¢¸ µî ·Ï Àý Â÷  ¾È ³» ¢º
+
+ [[hostname]] À» ¹æ¹®ÇØ ÁÖ¼Å¼­ ´ë´ÜÈ÷ °¨»çÇÕ´Ï´Ù.
+ [[hostname]] Àº È¸¿ø°£ÀÇ µµ½º(DOS) Á¤º¸ ±³È¯ÀÌ¶ó´Â ¼ø¼öÇÑ ¸ñÀû¾Æ·¡ 
+ ¿î¿µµÇ´Â °ÇÀüÇÑ »ç¼³ BBS ÀÔ´Ï´Ù.
+ [[hostname]] °ú ÇÔ²²ÇÏ½Ç ºÐÀº ´ÙÀ½ÀÇ °¡ÀÔ ¾ç½Ä¿¡ ¼º½ÇÈ÷ ´äÇØÁÖ¼¼¿ä.
+ ÀüÈ­ºñ °ÆÁ¤¾ø´Â [[hostname]] °ú ÇÔ²² Áñ°Å¿î PCÅë½ÅÀ» Áñ°Üº¸¼¼¿ä.

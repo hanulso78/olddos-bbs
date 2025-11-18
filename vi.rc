@@ -1,0 +1,4 @@
+set encoding=cp949
+set wrap
+hi normal   ctermfg=white  ctermbg=blue guifg=white  guibg=blue
+hi nontext  ctermfg=blue   ctermbg=blue guifg=blue   guibg=blue

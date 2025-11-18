@@ -1,0 +1,404 @@
+<?xml version="1.0" encoding="euc-kr"?>
+<hanulso>
+	<item type="menu" text="txt/top.txt" go="top">
+		<header>txt/header.txt</header>
+		<footer>txt/footer.txt</footer>
+
+		<!------------------------------------------------------------->
+		<item type="board" go="notice" id="bbs_notice" door="1" access_level="1">
+			<name>공지 (notice)</name>
+			<attachment>yes</attachment>
+			<write_sysop_only>yes</write_sysop_only>
+			<reply>no</reply>
+			<header>txt/header.txt</header>
+			<footer></footer>
+		</item>
+
+		<item type="board" go="welcome" id="bbs_hello" door="2" access_level="1">
+			<name>가입인사 (welcome)</name>
+			<attachment>no</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+
+		<item type="board" go="membership" id="bbs_levelup" door="3" access_level="1">
+			<name>특별/회원/신청 (membership)</name>
+			<attachment>no</attachment>
+			<reply>yes</reply>
+			<header>txt/levelup_header.txt</header>
+			<footer>txt/levelup_footer.txt</footer>
+		</item>
+		
+		<item type="board" go="tosysop" id="bbs_suggest" door="4" access_level="1">
+			<name>건의하기 (tosysop)</name>
+			<attachment>yes</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+		
+		<item type="chatt" id="bbs_chat" door="5" go="chat" access_level="1">
+			<name>대화방 대기실 (chat)</name>
+			<header></header>
+			<footer>txt/chatt_footer.txt</footer>
+		</item>
+
+		<item type="menu" text="txt/life_info.txt" go="life" door="6">
+			<item type="weather" go="weather" door="1" access_level="1">
+				<name>날씨 정보 (weather)</name>
+				<header></header>
+				<footer></footer>
+			</item>
+
+			<item type="news" go="news" door="2" access_level="1">
+				<name>뉴스 (news)</name>
+				<header></header>
+				<footer></footer>
+			</item>
+		</item>
+
+		
+		<!------------------------------------------------------------->
+		<item type="board" go="plaza" id="bbs_freetalk" door="51" access_level="1">
+			<name>자유 게시판 (plaza)</name>
+			<attachment>yes</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+		
+		<item type="board" go="market" id="bbs_market" door="52" access_level="1">
+			<name>장터 게시판 (market)</name>
+			<attachment>yes</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+
+		<item type="board" go="te99" id="bbs_qna" door="53" access_level="1">
+			<name>문답 게시판 (TE99)</name>
+			<attachment>yes</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+		
+		<item type="board" go="humor" id="bbs_humor" door="54" access_level="1">
+			<name>유머 게시판 (HUMOR)</name>
+			<attachment>yes</attachment>
+			<reply>yes</reply>
+			<header></header>
+			<footer></footer>
+		</item>
+
+		<!------------------------------------------------------------->
+		<item type="menu" text="txt/pds_prog.txt" go="prog" door="41">
+			<item type="board" id="bbs_pds_prog_os" door="1" access_level="1">
+				<name>운영체제 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_driver" door="2" access_level="1">
+				<name>드라이버 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_utility" door="3" access_level="1">
+				<name>유틸리티 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_hanbios" door="4" access_level="1">
+				<name>한글 바이오스 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_rombios" door="5" access_level="1">
+				<name>롬 바이오스 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_graphic" door="6" access_level="1">
+				<name>그래픽 프로그램 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_sound" door="7" access_level="1">
+				<name>사운드 프로그램 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_communication" door="8" access_level="1">
+				<name>통신 프로그램 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_vaccine" door="9" access_level="1">
+				<name>백신 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_office" door="10" access_level="1">
+				<name>오피스 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_devtool_code" door="11" access_level="1">
+				<name>개발툴/코드 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_sci_eng_edu" door="12" access_level="1">
+				<name>과학/공학/교육 관련 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_book_supplement" door="13" access_level="1">
+				<name>도서/잡지 부록 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_etc" door="14" access_level="1">
+				<name>기타 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+
+
+			<item type="board" id="bbs_pds_prog_os_img" door="21" access_level="2">
+				<name>운영체제 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_system_img" door="22" access_level="2">
+				<name>시스템 프로그램 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_devtool_img" door="23" access_level="2">
+				<name>개발툴 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_app_img" door="24" access_level="2">
+				<name>응용프로그램 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_prog_etc_img" door="25" access_level="2">
+				<name>기타 프로그램 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+		</item>
+
+		<!------------------------------------------------------------->
+		<item type="menu" text="txt/pds_game.txt" go="game" door="42">
+			<item type="board" id="bbs_pds_game_adventure" door="1" access_level="1">
+				<name>어드벤처 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_action" door="2" access_level="1">
+				<name>액션/아케이드 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_shooting" door="3" access_level="1">
+				<name>슈팅 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_simulation" door="4" access_level="1">
+				<name>시뮬레이션 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_rpg" door="5" access_level="1">
+				<name>롤플레잉 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_sports" door="6" access_level="1">
+				<name>스포츠 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_puzzle" door="7" access_level="1">
+				<name>퍼즐 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_etc" door="8" access_level="1">
+				<name>기타 게임 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+
+
+			<item type="board" id="bbs_pds_game_adventure_img" door="11" access_level="2">
+				<name>어드벤처 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_action_img" door="12" access_level="2">
+				<name>액션/아케이드 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_shooting_img" door="13" access_level="2">
+				<name>슈팅 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_simulation_img" door="14" access_level="2">
+				<name>시뮬레이션 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_rpg_img" door="15" access_level="2">
+				<name>롤플레잉 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_sports_img" door="16" access_level="2">
+				<name>스포츠 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_puzzle_img" door="17" access_level="2">
+				<name>퍼즐 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_pds_game_etc_img" door="18" access_level="2">
+				<name>기타 게임 덤프 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+
+
+			<item type="board" id="bbs_game_review" door="20" access_level="1">
+				<name>게임 리뷰 및 후기 게시판</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+
+			<item type="board" id="bbs_game_patch" door="21" access_level="1">
+				<name>게임 패치/에디터/팁/암호 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+			<item type="board" id="bbs_game_manual" door="22" access_level="1">
+				<name>게임 메뉴얼/공략 자료실</name>
+				<attachment>yes</attachment>
+				<reply>no</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+		</item>
+
+		<item type="menu" text="txt/pds_special.txt" go="book" door="43">
+			<item type="board" id="bbs_pds_special_book_scan" door="1" access_level="2">
+				<name>고전 도서 스캔 자료실</name>
+				<attachment>yes</attachment>
+				<reply>yes</reply>
+				<header></header>
+				<footer></footer>
+			</item>
+		</item>
+
+		<item type="menu" text="txt/pds_sound.txt" go="music" door="44">
+			<item type="board" id="bbs_sound_adlib_data" door="1" access_level="1">
+				<name>애드립 음원 자료실</name>
+				<attachment>yes</attachment>
+				<reply>yes</reply>
+				<header></header>
+				<footer>txt/adlib_data_footer.txt</footer>
+			</item>
+			<item type="board" id="bbs_sound_midi_data" door="2" access_level="1">
+				<name>미디 음원 자료실</name>
+				<attachment>yes</attachment>
+				<reply>yes</reply>
+				<header></header>
+				<footer>txt/midi_data_footer.txt</footer>
+			</item>
+		</item>
+
+	</item>
+</hanulso>

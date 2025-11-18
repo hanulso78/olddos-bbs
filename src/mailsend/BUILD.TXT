@@ -1,0 +1,25 @@
+BBS 사용자가 패스워드 분실시 자동으로 셋팅하여 보내는 기능에 사용함..
+
+## openssl 빌드
+wget -c https://www.openssl.org/source/openssl-1.0.2p.tar.gz
+tar -xzvf openssl-1.0.2p.tar.gz
+cd openssl-1.0.2p/
+./config 
+make
+su make install
+
+## mailsend 빌드
+cd mailsend-1.19
+./configure --with-openssl=/usr/local/ssl
+make
+cp ./mailsend ../../../bin
+
+## 테스트
+/tmp/a.txt 에 다음의 파일을 작성..
+
+  안녕하세요.
+  변경된 도스박물관 BBS의 패스워드는 1234 입니다.
+  반드시 접속후 'PE' 커맨드로 패스워드를 변경해주세요.
+  감사합니다.
+
+./mailsend -to "h2h1995@naver.com" -from "olddosbbs@gmail.com" -sub "[도스박물관BBS] 패스워드 변경 알림" -starttls -port 587 -auth -smtp smtp.gmail.com -user olddosbbs@gmail.com  -pass "암호입력" -M "`cat /tmp/a.txt`" -log /tmp/mailsend.log

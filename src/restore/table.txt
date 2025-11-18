@@ -1,0 +1,51 @@
+; menu_id	table_name
+
+; 도스 프로그램
+22			bbs_pds_prog_os ; 운영체제
+5			bbs_pds_prog_driver ; 드라이버
+4			bbs_pds_prog_utility ; 유틸리티
+31			bbs_pds_prog_hanbios ; 한글바이오스
+53			bbs_pds_prog_rombios ; 롬바이오스
+6			bbs_pds_prog_graphic ; 그래픽
+7			bbs_pds_prog_sound ; 사운드
+9			bbs_pds_prog_communication ; 통신
+10			bbs_pds_prog_vaccine ; 백신
+11			bbs_pds_prog_office ; 오피스
+8			bbs_pds_prog_devtool_code ; 개발툴/코드
+27			bbs_pds_prog_sci_eng_edu ; 과학/공학/교육
+25			bbs_pds_prog_book_supplement ; 도서/잡지부록
+20			bbs_pds_prog_etc ; 기타자료
+
+; 도스 프로그램 (이미지)
+118			bbs_pds_prog_os_img ; 운영체제
+114			bbs_pds_prog_system_img ; 시스템
+115			bbs_pds_prog_devtool_img ; 개발툴
+116			bbs_pds_prog_app_img ; 응용프로그램
+117			bbs_pds_prog_etc_img ; 기타
+
+; 도스 게임
+13			bbs_pds_game_adventure ; 어드벤처
+14			bbs_pds_game_action ; 액션/아케이드
+39			bbs_pds_game_shooting ; 슈팅
+15			bbs_pds_game_simulation ; 시뮬레이션
+37			bbs_pds_game_rpg ; 롤플레잉
+36			bbs_pds_game_sports ; 스포츠
+16			bbs_pds_game_puzzle ; 퍼즐
+38			bbs_pds_game_etc ; 기타
+
+; 도스 게임 (이미지)
+82			bbs_pds_game_adventure_img ; 어드벤처
+78			bbs_pds_game_action_img ; 액션/아케이드
+79			bbs_pds_game_shooting_img ; 슈팅
+83			bbs_pds_game_simulation_img ; 시뮬레이션
+100			bbs_pds_game_rpg_img ; 롤플레잉
+101			bbs_pds_game_sports_img ; 스포츠
+102			bbs_pds_game_puzzle_img ; 퍼즐
+84			bbs_pds_game_etc_img ; 기타
+
+; 게임 기타
+109			bbs_game_review ; 리뷰 및 후기
+99			bbs_game_patch ; 패치/에디터/팁/암호
+26			bbs_game_manual ; 메뉴얼 공략(파일본)
+49			bbs_game_manual ; 메뉴얼 공략(스캔본)
+

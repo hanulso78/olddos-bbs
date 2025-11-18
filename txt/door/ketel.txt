@@ -1,0 +1,20 @@
+  [S[=1G[2J[=15F
+ Connect 2400 MNP
+ 
+ ### ketel¿¡ ¿¬°áµÇ¾ú½À´Ï´Ù. (korea:pc)
+ ### Welcome to ketel!! 
+ ### ¼­ºñ½º ¸í¿¡ ketel À» ÀÔ·ÂÇÏ½Ê½Ã¿ä. 
+ ### Please type 'ke' for KETEL English Service.
+  
+ ¼­ºñ½º ¸í(Login):
+  
+       KK  KKK   EEEEE   TTTTTTT   EEEEEE    L   tm
+      KK  KK    EE         TT     EE        L
+     KKK       EEEE       TT     EEEE      LL
+    KK KK     EE         TT     EE        LL
+   KK   KKK   EEEEEE    TT    EEEEEE     LLLLLLLL
+ 
+  <<<¾Ë¸³´Ï´Ù>>>
+ 
+ 1. ºñ¹Ð¹øÈ£¸¦ ºÐ½ÇÇÏ¼Ì³ª¿ä? 'PASS' ¸¦ ÀÔ·ÂÇÏ¼¼¿ä.
+ 2. °Ô½ÃÆÇ ¹× ´ëÈ­½Ç ÀÌ¿ë½Ã °ÇÀüÇÑ ¾ð¾î¸¦ »ç¿ëÇÕ½Ã´Ù.

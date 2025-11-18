@@ -1,0 +1,4 @@
+#!/bin/bash
+export HANULSO=/home/olddos/olddos-bbs
+cd $HANULSO
+./ctime

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="euc-kr"?>
+<news>
+	<!-- http://news.jtbc.joins.com/Etc/RssService.aspx -->
+	<newspaper name="JTBC" door="1">
+		<category>
+			<door>1</door>
+			<name>속보</name>
+			<rss>http://fs.jtbc.joins.com/RSS/newsflash.xml</rss>
+		</category>
+		<category>
+			<door>2</door>
+			<name>정치</name>
+			<rss>http://fs.jtbc.joins.com/RSS/politics.xml</rss>
+		</category>
+		<category>
+			<door>3</door>
+			<name>연예</name>
+			<rss>http://fs.jtbc.joins.com/RSS/entertainment.xml</rss>
+		</category>
+	</newspaper>
+	<newspaper name="오마이뉴스" door="2">
+		<category>
+			<door>1</door>
+			<name>전체기사</name>
+			<rss>http://rss.ohmynews.com/rss/ohmynews.xml</rss>
+		</category>
+		<category>
+			<door>2</door>
+			<name>주요기사</name>
+			<rss>http://rss.ohmynews.com/rss/top.xml</rss>
+		</category>
+		<category>
+			<door>3</door>
+			<name>사회</name>
+			<rss>http://rss.ohmynews.com/rss/society.xml</rss>
+		</category>
+	</newspaper>
+	<newspaper name="전자신문" door="3">
+		<category>
+			<door>1</door>
+			<name>오늘의 뉴스</name>
+			<rss>http://rss.etnews.com/Section901.xml</rss>
+		</category>
+		<category>
+			<door>2</door>
+			<name>게임</name>
+			<rss>http://rss.etnews.com/04104.xml</rss>
+		</category>
+	</newspaper>
+</news>

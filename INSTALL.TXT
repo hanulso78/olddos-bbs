@@ -1,0 +1,120 @@
+계정 추가
+==============
+% sudo adduser bbs
+% sudo passwd bbs
+
+EUC-KR 한글 출력 설정
+==============
+% vim ~/.bashrc
+export LANG=ko_KR.eucKR
+
+SELinux 끄기
+==============
+% vim /etc/sysconfig/selinux
+SELINUX=disabled
+% reboot or setenforce=0
+
+텔넷 서버 설치
+==============
+% yum install xinetd telnet-server
+
+텔넷 BBS 데몬 연동
+==============
+% vim /etc/xinetd.d/telnet
+service telnet
+{
+        disable = no
+        flags = REUSE
+        socket_type = stream
+        wait = no
+        user = bbs
+        server = /usr/sbin/in.telnetd
+        server_args = -h -L /home/bbs/olddos-bbs/runbbs
+        log_on_failure += USERID
+}
+
+% /etc/init.d/xinetd restart
+
+텔넷 설정
+==============
+% vim /etc/xinetd.conf
+# 똑 같은 IP주소로 로컬 서비스에 접속할 수 있는 최대 접속 수 (무제한은 UNLIMITED로 셋팅)
+per_source      = 10
+# 동시에 서비스 할 수 있는 섭의 최대 개수 (무제한은 UNLIMITED로 셋팅)
+instances       = 60
+
+% vim /etc/sysconfig/iptables
+아래 추가
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 23 -j ACCEPT
+% service iptables restart
+
+g++ 설치
+==============
+% yum install -y gcc-c++
+
+ZMODEM 프로토콜 프로그램 설치
+==============
+% yum install lrzsz
+
+스크린 에디터 nano 최신 버전 설치
+==============
+$ wget http://ftp.gnu.org/gnu/nano/nano-2.9.6.tar.gz
+$ tar xvfz nano-2.9.6.tar.gz
+$ cd nano-2.9.6
+$ ./configure --enable-altrcname --enable-color --enable-extra --enable-multibuffer --enable-nanorc --enable-utf8
+$ make; make install
+$ nano --version
+GNU nano, version 2.9.6
+(C) 1999-2011, 2013-2018 Free Software Foundation, Inc.
+(C) 2014-2018 the contributors to nano
+Email: nano@nano-editor.org	Web: https://nano-editor.org/
+Compiled options: --disable-libmagic --enable-utf8
+
+lsb_release 설치 (배포판 확인 커맨드)
+==============
+% yum install redhat-lsb-core
+
+dos2unix 설치
+==============
+% yum install dos2unix unix2dos
+
+iconv 설치
+==============
+% already installed
+
+libz 설치
+==============
+% yum install zlib-devel
+
+openssl 설치
+==============
+% yum install openssl-devel
+
+MariaDB 설치
+==============
+% vim /etc/yum.repos.d/MariaDB.repo
+[mariadb]
+name = MariaDB
+baseurl = http://yum.mariadb.org/5.5/centos6-amd64
+gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+gpgcheck=1
+% yum install MariaDB-server MariaDB-client
+% service mysql restart
+
+root 패스워드 설정
+==============
+% mysql -u root -p
+No password required
+> use mysql;
+> UPDATE mysql.user SET Password=PASSWORD('PASSWORD입력') WHERE User='root' AND Host='localhost';
+> flush privileges; 
+> quit;
+
+Connector 설치
+==============
+% yum install mysql-devel
+
+MariaDB 서비스 실행 및 확인
+==============
+% service mysql restart
+% service mysql status
