@@ -18,14 +18,20 @@ Before installation, you will need the hanulso.cfg file. Please create it as fol
 <hanulso>
 	<name>TITLE</name>
 	<database>
-		<name>bbs</name>
-		<host>localhost</host>
-		<user>olddos</user>
-		<password>password!!</password>
+		<name>db_name</name>
+		<host>db_host</host>
+		<user>db_user</user>
+		<password>db_user_password</password>
 	</database>
+	<mailserver>
+		<host>smtp.naver.com</host>
+		<port>587</port>
+		<user>user@naver.com</user>
+		<password>user password</password>
+	</mailserver>
 	<sysop>
-		<user>admin</user>	<!-- Admin -->
-		<user>admin2</user>	<!-- Admin2 -->		
+		<user>admin</user>	<!-- admin -->
+		<user>admin2</user>	<!-- another admin -->		
 	</sysop>
 	<article>
 		<show_max_line>15</show_max_line>
