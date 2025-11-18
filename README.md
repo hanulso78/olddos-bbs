@@ -1,8 +1,7 @@
 
 README
 -
-This program aims to implement a BBS (Bulletin Board System) in the style popular in Korea during the 1990s.  
-Currently, the program is being developed and operated on CentOS 6.9 (https://bbsweb.oscc.kr/).
+This program aims to implement a BBS (Bulletin Board System) in the style popular in Korea during the 1990s. Currently, the program is being developed and operated on CentOS 6.9 (https://bbsweb.oscc.kr/).
 
 This program is licensed under the LGPL.
 
