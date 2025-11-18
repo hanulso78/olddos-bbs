@@ -11,6 +11,12 @@ char db_user[256];
 char db_passwd[256];
 char db_name[256];
 
+// mail server 변수
+char mailserver_host[256];
+char mailserver_port[256];
+char mailserver_user[256];
+char mailserver_passwd[256];
+
 // 관리자 권한 유저 목록
 std::vector<std::string> sysop_users;
 
@@ -34,12 +40,21 @@ void read_settings(std::string cfg_path)
 	}
 
 	pugi::xml_node node = doc.first_element_by_path("/hanulso");
+
+	// 호스트 이름
+	sprintf(host_name, "%s", node.child("name").child_value());
 	
 	// db 정보
 	sprintf(db_name, "%s", node.child("database").child("name").child_value());
 	sprintf(db_host, "%s", node.child("database").child("host").child_value());
 	sprintf(db_user, "%s", node.child("database").child("user").child_value());
 	sprintf(db_passwd, "%s", node.child("database").child("password").child_value());
+
+    // mail server 정보
+    sprintf(mailserver_host, "%s", node.child("mailserver").child("host").child_value());
+    sprintf(mailserver_port, "%s", node.child("mailserver").child("port").child_value());
+    sprintf(mailserver_user, "%s", node.child("mailserver").child("user").child_value());
+    sprintf(mailserver_passwd, "%s", node.child("mailserver").child("password").child_value());
 	
 	// 관리자권한 유저 목록
 	pugi::xml_node node2 = node.child("sysop").first_child();
@@ -49,9 +64,6 @@ void read_settings(std::string cfg_path)
 		node2 = node2.next_sibling();
 		if ( node2.empty() ) break;
 	}
-
-	// 호스트 이름
-	sprintf(host_name, "%s", node.child("name").child_value());
 
 	// show max line
 	show_max_line = atoi(node.child("article").child("show_max_line").child_value());

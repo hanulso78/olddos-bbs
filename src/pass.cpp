@@ -174,11 +174,13 @@ int main(int argc, char **argv)
         sprintf(cmd, "iconv -f EUC-KR -t UTF8 %s > %s", path, path2);
         exec_command(cmd, &success);
 
-        sprintf(cmd, "%s/bin/mailsend -to \"%s\" -from \"olddos78@naver.com\""
-            " -sub \"[도스박물관BBS] 비밀번호 변경 알림\""
-            " -starttls -port 587 -auth -smtp smtp.naver.com -user olddos78@naver.com"
-            " -pass \"password!!\" -M \"`cat %s`\" -log \"/tmp/mailsend.log\"",
-            getenv("HANULSO"), email_address, path2);
+        sprintf(cmd, "%s/bin/mailsend -to \"%s\" -from \"%s\""
+            " -sub \"[%s] 비밀번호 변경 알림\""
+            " -starttls -port %s -auth -smtp %s -user %s"
+            " -pass \"%s\" -M \"`cat %s`\" -log \"/tmp/mailsend.log\"",
+            getenv("HANULSO"), email_address, 
+            mailserver_user, host_name, 
+            mailserver_port, mailserver_host, mailserver_user, mailserver_passwd, path2);
 
         printf("\r\n\r\n 이메일을 발송중입니다..."); fflush(stdout);
 

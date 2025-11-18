@@ -58,6 +58,11 @@ extern char db_user[256];
 extern char db_passwd[256];
 extern char db_name[256];
 
+extern char mailserver_host[256];
+extern char mailserver_port[256];
+extern char mailserver_user[256];
+extern char mailserver_passwd[256];
+
 extern std::vector<std::string> sysop_users;
 
 extern std::vector<int> level_nums;
