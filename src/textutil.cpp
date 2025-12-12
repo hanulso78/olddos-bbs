@@ -165,7 +165,7 @@ void print_file(const char *filename)
 
 	for(int i=0; i<lines.size(); i++) {
 		if ( trim(lines[i]) == "#PAGE" ) {
-			printf("\r\n [Enter] 를 누르세요.");
+            //printf("\r\n [Enter] 키를 누르세요.");
 			press_enter();
 
 		} else {
