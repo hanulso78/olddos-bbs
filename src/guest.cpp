@@ -185,6 +185,7 @@ int main(int argc, char **argv)
 		if ( check[4] == 0 ) {
 			printf(ESC_ENG);
 			printf("\r\n 5. 이메일 주소를 입력하세요.");
+			printf("\r\n    비밀번호 분실시 사용되니 정확하게 입력하세요.");
 			while (1) {
 				printf("\r\n >> ");
 				line_input(email_address, 40);
