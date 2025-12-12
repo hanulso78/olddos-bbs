@@ -1,15 +1,17 @@
 
-README
+Introduction
 -
 This program aims to implement a BBS (Bulletin Board System) in the style popular in Korea during the 1990s. Currently, the program is being developed and operated on CentOS 6.9 (https://bbsweb.oscc.kr/).
 
+License
+-
 This program is licensed under the LGPL.
 
-INSTALL
+Install
 -
 For installation instructions, please refer to the INSTALL.txt file.
 
-CONFIGURATION
+Configuration
 -
 Before installation, you will need the hanulso.cfg file. Please create it as follows.
 
@@ -44,7 +46,7 @@ Before installation, you will need the hanulso.cfg file. Please create it as fol
 </hanulso>
 ```
 
-SCREENSHOT
+Screenshots
 -
 <img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/7e9b6b06-dbe8-4587-a79e-c77295dfa7db" />
 <img width="850" height="739" alt="image" src="https://github.com/user-attachments/assets/c1919b16-0487-4b2c-8026-2b2dafb58ec1" />
