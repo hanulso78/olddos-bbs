@@ -1485,7 +1485,7 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 		} else if ( !strcasecmp(args[0].c_str(), "h") ) {
 			print_file("txt/help.txt");
 			//printf("\r\n [Enter] 를 누르세요.");
-			press_enter();
+			//press_enter();
 
 		// 메뉴 가기 (go), TOP 으로 이동(t)
 		} else if ( !strcasecmp(args[0].c_str(), "go") || !strcasecmp(args[0].c_str(), "t") ) {

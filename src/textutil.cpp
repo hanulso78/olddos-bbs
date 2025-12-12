@@ -164,12 +164,17 @@ void print_file(const char *filename)
 	std::vector<std::string> lines = split_string(text, '\n');
 
 	for(int i=0; i<lines.size(); i++) {
-		if ( trim(lines[i]) == "#PAGE" ) {
-            //printf("\r\n [Enter] 키를 누르세요.");
-			press_enter();
+        std::string line = lines[i];
+        std::size_t pos = line.find("#PAGE");
 
-		} else {
-			printf("%s\r\n", lines[i].c_str());
-		}
+        if (pos != std::string::npos) {
+            std::string before = line.substr(0, pos);
+            const std::size_t keyLen = std::string("#PAGE").length();
+            printf("%s", before.c_str());
+            press_enter();
+            printf("\r\n");
+        } else {
+            printf("%s\r\n", line.c_str());
+        }
 	}
 }
