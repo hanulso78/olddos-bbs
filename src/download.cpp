@@ -6,16 +6,36 @@ struct download_tmp_dir {
 	~download_tmp_dir() { if ( !dir.empty() ) remove_tmp_dir(dir.c_str()); }
 };
 
-bool file_download(int protocol, char *tmp_filename, char *filename)
+// 첨부 표의 파일 이름: "file..." 또는 번호 폴더까지 "001/file..." (폴더는 숫자만, 한 단계)
+static bool safe_stored_name(const char *s)
+{
+	const char *sl = strchr(s, '/');
+	if ( s[0] == 0 || strstr(s, "..") ) return false;
+	if ( sl == NULL ) return true;
+	if ( strchr(sl + 1, '/') || sl == s || sl[1] == 0 ) return false;
+	for ( const char *p = s; p < sl; p++ ) if ( !isdigit((unsigned char)*p) ) return false;
+	return true;
+}
+
+// err 에 실패한 까닭 (화면에 보일 한 줄)
+bool file_download(int protocol, char *tmp_filename, char *filename, std::string *err)
 {
 	char buf[9072];
 
 	char tmpdir[1024];
 	char path[1024];
 	char path2[1024];
+	std::string dummy;
+	if ( err == NULL ) err = &dummy;
+	err->clear();
 
-	// 이전에 저장된 파일 이름에 위험한 문자가 있을 수 있으므로 / 는 막는다
-	if ( strchr(tmp_filename, '/') || strchr(filename, '/') ) {
+	// 저장된 이름 (번호 폴더/파일) 과 받을 이름에 위험한 것이 있으면 막는다
+	if ( !safe_stored_name(tmp_filename) ) {
+		*err = std::string("첨부 파일 이름이 올바르지 않습니다 (") + tmp_filename + ")";
+		return false;
+	}
+	if ( strchr(filename, '/') || filename[0] == 0 ) {
+		*err = "받을 파일 이름이 올바르지 않습니다";
 		return false;
 	}
 
@@ -24,6 +44,7 @@ bool file_download(int protocol, char *tmp_filename, char *filename)
 	sprintf(tmpdir, "%s/tmp", getenv("HANULSO"));
 	sprintf(tmpdir, "%s", tempnam(tmpdir, "file"));
 	if ( !mkdir2(tmpdir) ) {
+		*err = std::string("임시 폴더를 만들지 못했습니다: ") + strerror(errno);
 		return false;
 	}
 	download_tmp_dir guard;
@@ -47,6 +68,7 @@ bool file_download(int protocol, char *tmp_filename, char *filename)
 		snprintf(buf, sizeof(buf), "cp %s %s", shell_quote(path).c_str(), shell_quote(path2).c_str());
 		a = system(buf);
 		if ( WEXITSTATUS(a) != 0 ) {
+			*err = "보낼 파일을 준비하지 못했습니다 (링크와 복사가 모두 실패)";
 			return false;
 		}
 	}
@@ -70,13 +92,41 @@ bool file_download(int protocol, char *tmp_filename, char *filename)
         snprintf(buf, sizeof(buf), KERMIT_PROG " -i -s %s", getenv("HANULSO"), qname.c_str());   // Kermit: 바이너리로 보내기
     }
 	//sprintf(buf, "%s/bin/sexyz sz \"%s\"", getenv("HANULSO"), filename);
+	// 전송 프로그램의 메시지 (stderr) 는 파일로 받아 실패하면 마지막 줄을 보여 준다
+	std::string errfile = std::string(tmpdir) + "/.sz.err";
+	strncat(buf, (" 2>" + shell_quote(errfile)).c_str(), sizeof(buf) - strlen(buf) - 1);
 	ioctl(0, TCSETAF, &sys_term);
 	a = system(buf);
 	ioctl(0, TCSETAF, &curr_term);
 
 	chdir(getenv("HANULSO"));
 
+	if ( a == -1 ) {
+		*err = std::string("전송 프로그램을 실행하지 못했습니다: ") + strerror(errno);
+		return false;
+	}
+	if ( WIFSIGNALED(a) ) {
+		*err = "전송 프로그램이 신호 " + TO_STRING(WTERMSIG(a)) + " 로 멈췄습니다";
+		return false;
+	}
+	if ( WEXITSTATUS(a) != 0 ) {
+		int code = WEXITSTATUS(a);
+		// 마지막 메시지 한 줄 (sz: "Transfer incomplete", "caught signal" ...)
+		std::string last;
+		std::vector<std::string> lines = split_string(read_file(errfile.c_str()), '\n');
+		for ( int i = (int)lines.size() - 1; i >= 0 && last.empty(); i-- ) {
+			std::string l = trim(lines[i]);
+			std::string::size_type cr = l.rfind('\r');
+			if ( cr != std::string::npos ) l = trim(l.substr(cr + 1));
+			last = display_text(l);
+		}
+		if ( code == 127 ) *err = "전송 프로그램이 없습니다 (" + std::string(protocol == 4 ? "gkermit" : "sz, lrzsz") + " 설치 확인)";
+		else *err = "전송이 끝나지 못했습니다 (코드 " + TO_STRING(code) + "): 받는 쪽에서 취소했거나 연결이 끊겼을 수 있습니다";
+		if ( !last.empty() ) *err += "\r\n    전송 프로그램: " + string_truncate(last, 60, "");
+		return false;
+	}
+
 	// 임시 폴더는 guard 가 지운다
-	return WEXITSTATUS(a) == 0;
+	return true;
 }
 

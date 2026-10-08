@@ -1259,20 +1259,26 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
                                 int size;
 
                                 ioctl(0, TCSETAF, &sys_term);
+                                bool uploaded = file_upload(protocol, xname, &tmp_filename, &filename, &size);
+                                // 전송이 끝나면 바로 BBS 입력 모드로 되돌린다
+                                // (일반 모드인 채로 [Enter] 를 기다리면 Enter 가 먹지 않는다)
+                                ioctl(0, TCSETAF, &curr_term);
 
-                                if ( file_upload(protocol, xname, &tmp_filename, &filename, &size) ) {
-                                    database::add_attachment(table_name, no, 
+                                if ( uploaded ) {
+                                    database::add_attachment(table_name, no,
                                         login_user_id,
-                                        (char*)(date_now_string(false).c_str()), 
+                                        (char*)(date_now_string(false).c_str()),
                                         (char*)(time_now_string().c_str()),
                                         tmp_filename, filename);
 
                                     printf("\r\n파일 전송을 성공하였습니다.");
                                     printf("\r\n[Enter] 를 누르세요.");
                                     press_enter();
+                                } else {
+                                    printf("\r\n파일 올리기를 실패하였습니다. (받는 쪽에서 취소했거나 연결이 끊겼을 수 있습니다)");
+                                    printf("\r\n[Enter] 를 누르세요.");
+                                    press_enter();
                                 }
-
-                                ioctl(0, TCSETAF, &curr_term);
 
                                 if ( size > 0 ) {
                                     free(tmp_filename);
@@ -1364,7 +1370,11 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
                                 if ( file_exists(path) ) {
                                     ioctl(0, TCSETAF, &sys_term);
 
-                                    if ( file_download(protocol, tmp_filename, filename) ) {
+                                    std::string why;
+                                    bool sent = file_download(protocol, tmp_filename, filename, &why);
+                                    // 전송이 끝나면 바로 BBS 입력 모드로 (일반 모드인 채로 [Enter] 를 기다리면 Enter 가 먹지 않는다)
+                                    ioctl(0, TCSETAF, &curr_term);
+                                    if ( sent ) {
                                         // 다운로드 수 증가 시킴
                                         int no = atoi(attach_row["NO"].c_str());
                                         database::increase_download(no);
@@ -1375,11 +1385,10 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 
                                     } else {
                                         printf("\r\n파일 수신을 실패하였습니다.");
+                                        if ( !why.empty() ) printf("\r\n  \033[=12F%s\033[=15F", why.c_str());
                                         printf("\r\n[Enter] 를 누르세요.");
                                         press_enter();
                                     }
-
-                                    ioctl(0, TCSETAF, &curr_term);
 
                                 } else {
                                     printf("\r\n첨부 파일이 존재하지 않습니다.");

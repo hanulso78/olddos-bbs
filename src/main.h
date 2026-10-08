@@ -275,7 +275,7 @@ void strip_xmodem_pad(const char *path);
 #define KERMIT_PROG "%s/bin/gkermit"
 
 bool file_upload(int protocol, const char *xname, char **tmp_filename, char **filename, int *size);
-bool file_download(int protocol, char *tmp_filename, char *filename);
+bool file_download(int protocol, char *tmp_filename, char *filename, std::string *err = NULL);
 
 // ----------------------------------------------------------------
 std::string replace_bbcode(std::string text);
