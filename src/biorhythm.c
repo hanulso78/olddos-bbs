@@ -233,6 +233,7 @@ int main(int argc, char **argv)
 	today_lines(t);
 	printf("\r\n");		// 막대와 그래프 사이 한 줄
 	chart(t, ty, tm_, td);
+	printf("\r\n");		// 그래프와 아래 글 사이 한 줄
 	criticals(t, ty, tm_, td);
 	advice(t, 1);
 	return 0;
