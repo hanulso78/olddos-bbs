@@ -3040,3 +3040,255 @@
 == {이} 몸을 피합니다.
 @@ A glancing blow from the Cyclops' fist.
 == 외눈박이 거인의 주먹이 빗맞습니다.
+
+# ---- 줄 단위 문장 틀 (%o 물건 이름, %n 숫자, %1 %2 는 순서를 바꿀 때) ----
+@@     %o cannot defend himself: He dies.
+==     %o{은} 자신을 지킬 수 없습니다. 그는 죽습니다.
+@@ A nice idea, but with a %o?
+== 좋은 생각이긴 한데, %o{으로}요?
+@@ Ahoy -- %o overboard!
+== 저런, %o{이} 배 밖으로 떨어졌습니다!
+@@ Almost as soon as the %o breathes his last breath, a cloud of sinister black fog envelops him, and when the fog lifts, the carcass has disappeared.
+== %o{이} 마지막 숨을 내쉬자마자 불길한 검은 안개가 그를 감싸고, 안개가 걷히자 시체는 사라지고 없습니다.
+@@ Attacking the %o is pointless.
+== %o{을} 공격해 봐야 소용없습니다.
+@@ Can you unlock a grating with a %o?
+== %o{으로} 쇠창살 자물쇠를 열 수 있겠습니까?
+@@ Digging with a %o is silly.
+== %o{으로} 땅을 파겠다니 우스운 일입니다.
+@@ Digging with the %o is slow and tedious.
+== %o{으로} 땅을 파는 건 느리고 지루한 일입니다.
+@@ Don't be silly. It wouldn't be a %o anymore.
+== 바보 같은 소리 마세요. 그러면 더 이상 %o{이} 아닐 겁니다.
+@@ Fortunately, you still have a %o.
+== 다행히 아직 %o{이} 남아 있습니다.
+@@ How does one look through a %o?
+== %o{을} 무슨 수로 들여다본단 말입니까?
+@@ How does one read a %o?
+== %o{을} 무슨 수로 읽는단 말입니까?
+@@ How sad for an aspiring adventurer to light a %o in a room which reeks of gas. Fortunately, there is justice in the world.
+== 가스 냄새가 진동하는 방에서 %o{을} 켜다니, 장래가 촉망되던 모험가에게 참 안된 일입니다. 다행히 세상에는 정의가 있습니다.
+@@ I don't think that the %o would agree with you.
+== %o{이} 그 말에 동의할 것 같지는 않습니다.
+@@ I've known strange people, but fighting a %o?
+== 별난 사람은 많이 봤지만, %o{과} 싸우겠다고요?
+@@ If you wish to burn the %o, you should say so.
+== %o{을} 태우고 싶으면 그렇게 말씀하세요.
+@@ It is hardly likely that the %o is interested.
+== %o{이} 관심을 보일 것 같지는 않습니다.
+@@ It looks pretty much like a %o.
+== 아무리 봐도 %o{이라}고밖에 할 수 없습니다.
+@@ It seems that a %o won't do.
+== %o{으로}는 안 될 것 같습니다.
+@@ It smells like a %o.
+== %o 냄새가 납니다.
+@@ It sounds like there is something inside the %o.
+== %o 안에 뭔가 들어 있는 소리가 납니다.
+@@ It's a well known fact that only schizophrenics say "Hello" to a %o.
+== %o에게 "Hello" 하고 인사하는 건 정신이 오락가락하는 사람뿐이라는 건 잘 알려진 사실입니다.
+@@ It's in the %o.
+== %o 안에 있습니다.
+@@ It's not clear that a %o can be melted.
+== %o{이} 녹을 수 있는지는 잘 모르겠습니다.
+@@ It's on the %o.
+== %o 위에 있습니다.
+@@ Look on a %o???
+== %o 위를 보라고요???
+@@ Moving the %o reveals nothing.
+== %o{을} 움직여 보았지만 아무것도 나오지 않습니다.
+@@ No doubt you propose to stab the %o with your pinky?
+== 설마 새끼손가락으로 %o{을} 찌르실 생각은 아니겠지요?
+@@ Not to say that using the %o isn't original too...
+== 그렇다고 %o{을} 쓰는 게 독창적이지 않다는 건 아니지만...
+@@ Pump it up with a %o?
+== %o{으로} 바람을 넣겠다고요?
+@@ Since you aren't versed in hand-to-hand combat, you'd better attack the %o with a weapon.
+== 맨손 싸움에는 서투르시니 무기를 들고 %o{을} 공격하는 게 좋겠습니다.
+@@ Strange concept, cutting the %o....
+== %o{을} 자르겠다니, 별난 발상이군요....
+@@ That's easy for you to say since you don't even have the %o.
+== %o{을} 가지고 있지도 않으면서 말은 쉽게 하시는군요.
+@@ The "cutting edge" of a %o is hardly adequate.
+== %o의 "날" 로는 어림도 없습니다.
+@@ The %o bows his head to you in greeting.
+== %o{이} 당신에게 고개를 숙여 인사합니다.
+@@ The %o burns and is consumed.
+== %o{이} 불타 없어졌습니다.
+@@ The %o catches fire and is consumed.
+== %o에 불이 붙어 다 타 버렸습니다.
+@@ The %o comes to a rest on the shore.
+== %o{이} 강기슭에 멈춰 섭니다.
+@@ The %o contains:
+== %o 안에 든 것:
+@@ The %o does not understand this.
+== %o{은} 이 말을 알아듣지 못합니다.
+@@ The %o drops out of sight into the chasm.
+== %o{이} 깊은 틈 속으로 떨어져 보이지 않게 됩니다.
+@@ The %o ducks as the %o flies by and crashes to the ground.
+== %1{이} 몸을 숙이자 %2{이} 그 위로 날아가 땅에 부딪힙니다.
+@@ The %o falls into the slide and is gone.
+== %o{이} 미끄럼 통로로 떨어져 사라졌습니다.
+@@ The %o falls to the ground.
+== %o{이} 땅에 떨어집니다.
+@@ The %o floats for a moment, then sinks.
+== %o{이} 잠깐 떠 있다가 가라앉습니다.
+@@ The %o goes through the grating into the darkness below.
+== %o{이} 쇠창살 사이로 빠져 아래 어둠 속으로 떨어집니다.
+@@ The %o has it.
+== %o{이} 가지고 있습니다.
+@@ The %o is already in the %o.
+== %1{은} 이미 %2 안에 들어 있습니다.
+@@ The %o is closed.
+== %o{은} 닫혀 있습니다.
+@@ The %o is empty.
+== %o{은} 비어 있습니다.
+@@ The %o is extinguished.
+== %o{이} 꺼졌습니다.
+@@ The %o is now closed.
+== %o{을} 닫았습니다.
+@@ The %o is now off.
+== %o{이} 꺼졌습니다.
+@@ The %o is now on.
+== %o{이} 켜졌습니다.
+@@ The %o is open, but I can't tell what's beyond it.
+== %o{은} 열려 있지만, 그 너머에 무엇이 있는지는 알 수 없습니다.
+@@ The %o is rudely awakened.
+== %o{이} 거칠게 잠에서 깹니다.
+@@ The %o is too big to jump over.
+== %o{은} 너무 커서 뛰어넘을 수 없습니다.
+@@ The %o isn't here!
+== 여기에 %o{은} 없습니다!
+@@ The %o isn't in the %o.
+== %1{은} %2 안에 없습니다.
+@@ The %o isn't open.
+== %o{은} 열려 있지 않습니다.
+@@ The %o isn't sleeping.
+== %o{은} 자고 있지 않습니다.
+@@ The %o leaves the room.
+== %o{이} 방을 나갑니다.
+@@ The %o makes no sound.
+== %o{은} 아무 소리도 내지 않습니다.
+@@ The %o must be on the ground to be boarded.
+== %o{은} 땅 위에 있어야 탈 수 있습니다.
+@@ The %o opens.
+== %o{이} 열립니다.
+@@ The %o pauses for a moment, perhaps thinking that you should reread the manual.
+== %o{은} 잠시 멈칫합니다. 아마 당신이 설명서를 다시 읽어야 한다고 생각하는 모양입니다.
+@@ The %o pays no attention.
+== %o{은} 거들떠보지도 않습니다.
+@@ The %o refuses it politely.
+== %o{이} 정중하게 거절합니다.
+@@ The %o seems white-hot. You can't hold on to it.
+== %o{이} 하얗게 달아올라 있습니다. 손에 쥐고 있을 수가 없습니다.
+@@ The %o slowly regains his feet.
+== %o{이} 천천히 다시 일어섭니다.
+@@ The %o splashes into the water and is gone forever.
+== %o{이} 첨벙 물에 빠져 영영 사라졌습니다.
+@@ The %o struggles and you cannot tie him up.
+== %o{이} 버둥거려서 묶을 수가 없습니다.
+@@ The %o swings it out of your reach.
+== %o{이} 그것을 휘둘러 당신 손이 닿지 않게 합니다.
+@@ The %o tumbles into the river and is seen no more.
+== %o{이} 강에 굴러떨어져 다시는 보이지 않습니다.
+@@ The bolt won't turn using the %o.
+== %o{으로}는 볼트가 돌아가지 않습니다.
+@@ The concept of using a %o is certainly original.
+== %o{을} 쓰겠다는 발상은 확실히 독창적입니다.
+@@ The thief is taken aback by your unexpected generosity, but accepts the %o and stops to admire its beauty.
+== 도둑은 뜻밖의 너그러움에 놀라면서도 %o{을} 받아 들고, 잠시 그 아름다움에 감탄합니다.
+@@ The thief places the %o in his bag and thanks you politely.
+== 도둑은 %o{을} 자루에 넣고 정중하게 고맙다고 인사합니다.
+@@ The water leaks out of the %o and evaporates immediately.
+== 물이 %o 밖으로 새어 나와 금세 증발합니다.
+@@ The water spills over the %o, to the floor, and evaporates.
+== 물이 %o 위로 쏟아져 바닥에 흐르더니 증발합니다.
+@@ There is a %o here
+== 여기에 %o{이} 있습니다
+@@ There is a %o here.
+== 여기에 %o{이} 있습니다.
+@@ There is nothing behind the %o.
+== %o 뒤에는 아무것도 없습니다.
+@@ There is now a puddle in the bottom of the %o.
+== 이제 %o 바닥에 물이 고였습니다.
+@@ There's no good surface on the %o.
+== %o에는 물건을 올려놓을 만한 곳이 없습니다.
+@@ There's nothing special about the %o.
+== %o에 특별한 점은 없습니다.
+@@ Trying to attack a %o with your bare hands is suicidal.
+== 맨손으로 %o{을} 공격하는 건 자살 행위입니다.
+@@ Trying to attack the %o with a %o is suicidal.
+== %2{으로} %1{을} 공격하는 건 자살 행위입니다.
+@@ Why knock on a %o?
+== %o{을} 왜 두드립니까?
+@@ Why would you send for the %o?
+== %o{을} 왜 부르려는 겁니까?
+@@ Why would you tie up a %o?
+== %o{을} 왜 묶으려는 겁니까?
+@@ With a %o?
+== %o{으로}요?
+@@ With a %o? Do you know how big this dam is? You could only stop a tiny leak with that.
+== %o{으로}요? 이 댐이 얼마나 큰지 아십니까? 그걸로는 아주 작은 구멍밖에 못 막습니다.
+@@ With a %o? Surely you jest!
+== %o{으로}요? 농담이시겠죠!
+@@ With a %o??!?
+== %o{으로}요??!?
+@@ You are already in the %o!
+== 당신은 이미 %o에 타고 있습니다!
+@@ You are now in the %o.
+== 이제 %o에 탔습니다.
+@@ You are now wearing the %o.
+== 이제 %o{을} 입었습니다.
+@@ You aren't even holding the %o.
+== %o{을} 들고 있지도 않습니다.
+@@ You become so engrossed in the role of the %o that you kill yourself, just as he might have done!
+== %o 흉내에 너무 빠져든 나머지, 그가 했을 법한 대로 스스로 목숨을 끊고 말았습니다!
+@@ You can't burn a %o.
+== %o{은} 태울 수 없습니다.
+@@ You can't climb onto the %o.
+== %o 위로는 올라갈 수 없습니다.
+@@ You can't give a %o to a %o!
+== %2에게 %1{을} 줄 수는 없습니다!
+@@ You can't go there in a %o.
+== %o{을} 타고는 거기 갈 수 없습니다.
+@@ You can't look inside a %o.
+== %o 안은 들여다볼 수 없습니다.
+@@ You can't move the %o.
+== %o{은} 움직일 수 없습니다.
+@@ You can't talk to the %o!
+== %o{과}는 이야기할 수 없습니다!
+@@ You can't tie the %o to that.
+== %o{을} 거기에 묶을 수는 없습니다.
+@@ You can't wear the %o.
+== %o{은} 입을 수 없습니다.
+@@ You cannot wind up a %o.
+== %o{은} 태엽을 감을 수 없습니다.
+@@ You don't have the %o.
+== %o{을} 가지고 있지 않습니다.
+@@ You feel a faint tingling transmitted through the %o.
+== %o{을} 통해 희미하게 찌릿한 느낌이 전해집니다.
+@@ You have a theory on how to board a %o, perhaps?
+== %o{을} 탈 방법이라도 생각해 두셨나요?
+@@ You have to be holding the %o first.
+== 먼저 %o{을} 손에 들고 있어야 합니다.
+@@ You hear, off in the distance, someone saying "My, I wonder what this fine %o is doing here."
+== 저 멀리서 누군가 "어머, 이 멋진 %o{이} 왜 여기 있지?" 하고 말하는 소리가 들립니다.
+@@ You hit your head against the %o as you attempt this feat.
+== 그 재주를 부리다가 %o에 머리를 부딪혔습니다.
+@@ You must address the %o directly.
+== %o에게 직접 말을 거셔야 합니다.
+@@ You must tell me how to do that to a %o.
+== %o에게 그걸 어떻게 하라는 건지 알려 주셔야 합니다.
+@@ You suddenly notice that the %o vanished.
+== 문득 %o{이} 사라진 것을 깨닫습니다.
+@@ You would have to get the %o first, and that seems unlikely.
+== 먼저 %o{을} 손에 넣어야 할 텐데, 그건 어려워 보입니다.
+@@ You'd better have more light than from the %o.
+== %o의 불빛보다 더 밝은 빛이 있어야겠습니다.
+@@ You'll have to open the %o first.
+== 먼저 %o{을} 열어야 합니다.
+@@ You're not carrying the %o.
+== %o{을} 가지고 있지 않습니다.
+@@ Your attempt to tie up the %o awakens him.
+== %o{을} 묶으려다 그만 그를 깨우고 말았습니다.
+@@ Your skillful %osmanship slices the %o into innumerable slivers which blow away.
+== 능숙한 %1 솜씨로 %2{을} 셀 수 없이 잘게 베자, 조각들이 바람에 날려 흩어집니다.
