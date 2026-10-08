@@ -81,7 +81,7 @@ int main(int argc, char **argv)
 		}
 
 		printf("\r\n 이용자ID : ");
-		line_input(login_user_id, 20);
+		line_input(login_user_id, 40);
 
 		// 회원 가입 처리
 		if ( !strcasecmp(login_user_id, "guest") ) {
