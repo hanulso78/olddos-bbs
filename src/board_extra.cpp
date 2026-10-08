@@ -391,12 +391,17 @@ void search_all_boards(std::string word)
 	article_list(head, "찾은 글이 없습니다.", list);
 }
 
-// BEST : 이번 주 인기 글,  BEST M : 이번 달
+// BEST : 이번 주 인기 글,  BEST M : 이번 달,  BEST Y : 올해,  BEST A : 전체 기간
 void show_best(std::string arg)
 {
-	bool month = !strcasecmp(trim(arg).c_str(), "m");
-	std::string where = std::string("DATE_TIME > NOW() - INTERVAL ") + (month ? "30" : "7") +
-		" DAY AND (HIT > 0 OR RECOMMEND > 0)";
+	std::string a = trim(arg);
+	int range = 0;		// 0 주, 1 달, 2 올해, 3 전체
+	if ( !strcasecmp(a.c_str(), "m") ) range = 1;
+	else if ( !strcasecmp(a.c_str(), "y") ) range = 2;
+	else if ( !strcasecmp(a.c_str(), "a") || !strcasecmp(a.c_str(), "all") ) range = 3;
+	static const char *since[4] = { "DATE_TIME > NOW() - INTERVAL 7 DAY AND ", "DATE_TIME > NOW() - INTERVAL 30 DAY AND ",
+		"DATE_TIME >= MAKEDATE(YEAR(NOW()), 1) AND ", "" };
+	std::string where = std::string(since[range]) + "(HIT > 0 OR RECOMMEND > 0)";
 	printf("\r\n인기 글을 모으는 중입니다...");
 	fflush(stdout);
 	std::vector<found_article> list = collect(where, 20, "RECOMMEND DESC, HIT DESC");
@@ -407,8 +412,12 @@ void show_best(std::string arg)
 		snprintf(b, sizeof(b), "%4d / %4d", list[i].recommend, list[i].hit);
 		list[i].col = b;
 	}
-	article_list(month ? "이번 달 인기 글 (최근 30일, BEST: 이번 주)" : "이번 주 인기 글 (최근 7일, BEST M: 이번 달)",
-			"인기 글이 없습니다.", list, "추천 / 조회");
+	static const char *head[4] = {
+		"이번 주 인기 글 (최근 7일)  BEST M 달, Y 올해, A 전체",
+		"이번 달 인기 글 (최근 30일)  BEST 주, Y 올해, A 전체",
+		"올해 인기 글  BEST 주, M 달, A 전체",
+		"전체 기간 인기 글  BEST 주, M 달, Y 올해" };
+	article_list(head[range], "인기 글이 없습니다.", list, "추천 / 조회");
 }
 
 // 지난번 접속 이후 다른 사람이 단 꼬리말이 있으면 ◆
