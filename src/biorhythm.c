@@ -17,16 +17,13 @@
 #define C_DARK   "\033[=8F"
 #define C_YELLOW "\033[=14F"
 #define C_RED    "\033[=12F"
-// 배경색: 이야기 확장 ESC[=nG. BBS 바탕은 파랑(1) 이고 다른 화면도 ESC[=1G 로 되돌린다.
-// ESC[0m 은 이야기에서 바탕과 글자색을 터미널 기본값으로 바꿔 버리므로 쓰지 않는다.
-// 밝은 배경(8~15)은 DOS 화면에서 깜빡임으로 처리될 수 있어 0~7 만 쓴다.
-#define BG_OFF   "\033[=1G"
+// 배경색은 쓰지 않는다 (ESC[0m 은 이야기에서 BBS 바탕까지 바꿔 버리고, 밝은 배경은 깜빡일 수 있다)
 
 struct rhythm {
 	const char *name;
 	int days;
 	const char *color;
-	int bg;				// 칠할 배경색 번호
+	int bg;				// (예전 배경 칠하기 색, 지금은 쓰지 않음)
 	const char *good, *bad;		// 좋은 날, 나쁜 날 풀이
 };
 
@@ -71,36 +68,22 @@ static const char *state(int k, long t)
 	return "바닥";
 }
 
-// 배경색 칠하기: 같은 색이 이어지면 코드를 다시 보내지 않는다 (cur: 지금 배경, -1 = 기본)
-static void paint(int *cur, int bg, char c)
-{
-	if ( bg != *cur ) {
-		if ( bg < 0 ) printf(BG_OFF);
-		else printf("\033[=%dG", bg);
-		*cur = bg;
-	}
-	putchar(c);
-}
-
-// -100 ~ +100 을 칠한 막대로: 왼쪽 20 칸(-), 가운데 |, 오른쪽 20 칸(+)
+// -100 ~ +100 막대: 왼쪽 10 칸(-), 가운데 |, 오른쪽 10 칸(+). 한 칸 = 10%, 2 칸 폭.
+// 리듬 이름과 같은 (밝은) 글자색의 ■ 로 찍는다. 밝은 색을 배경으로 칠하면 이야기에서 깜빡일 수 있다.
 static void bar(int k, double v)
 {
-	int n = (int)floor(fabs(v) * 20 + 0.5), i, cur = -1;
-	if ( n > 20 ) n = 20;
-	// 빈 칸은 바탕 그대로 두고 흐린 점으로 자리만 보인다
-	printf(C_DARK);
-	for ( i = 0; i < 20; i++ ) {
-		if ( v < 0 && i >= 20 - n ) paint(&cur, R[k].bg, ' ');
-		else paint(&cur, -1, '.');
+	int n = (int)floor(fabs(v) * 10 + 0.5), i;
+	if ( n > 10 ) n = 10;
+	for ( i = 0; i < 10; i++ ) {
+		if ( v < 0 && i >= 10 - n ) printf("%s■", R[k].color);
+		else printf(C_DARK "..");		// 빈 칸은 흐린 점
 	}
-	paint(&cur, -1, ' ');
-	printf(C_GRAY "|" C_DARK);
-	for ( i = 0; i < 20; i++ ) {
-		if ( v > 0 && i < n ) paint(&cur, R[k].bg, ' ');
-		else paint(&cur, -1, '.');
+	printf(" " C_GRAY "|");
+	for ( i = 0; i < 10; i++ ) {
+		if ( v > 0 && i < n ) printf("%s■", R[k].color);
+		else printf(C_DARK "..");
 	}
-	paint(&cur, -1, ' ');
-	printf(C_WHITE);
+	printf(" " C_WHITE);
 }
 
 static void today_lines(long t)
@@ -151,92 +134,41 @@ static int shift_date(int y, int m, int d, int n, int *mon)
 	return tmv.tm_mday;
 }
 
-// 앞뒤 2 주 그래프 (plotext 처럼): 테두리 상자, 위 테두리에 범례, 왼쪽 y 눈금, 아래 테두리에 x 눈금과 날짜.
-// 3 일 전 ~ 12 일 뒤 (16 일), 하루를 4 칸으로. 세로 9 줄을 한 줄에 세 높이 (' - .) 로 나눠 27 단계로 선을 그린다.
-// 상자 글자 (─ │ ┌ ...) 와 ● 는 완성형 2 바이트라 화면에서 2 칸을 차지한다.
+// 앞뒤 2 주 그래프: 2 일 전 ~ 12 일 뒤 (15 일). 하루를 4 칸으로 나눠 * 로 선을 그린다 (세로 11 줄)
 static void chart(long t, int y, int m, int d)
 {
-	enum { FROM = -3, DAYS = 16, STEP = 4, COLS = DAYS * STEP, ROWS = 9, LEVELS = ROWS * 3 };
-	static const char sub[3] = { '\'', '-', '.' };		// 칸 안의 높이: 위, 가운데, 아래
+	enum { FROM = -2, DAYS = 15, STEP = 4, COLS = DAYS * STEP, ROWS = 11 };
 	signed char who[ROWS][COLS];
-	char mark[ROWS][COLS];
-	int r, x, k, today = -FROM * STEP, legend_w;
-
+	int r, x, k;
 	memset(who, -1, sizeof(who));
 	for ( x = 0; x < COLS; x++ ) {
 		double tt = (double)t + FROM + (double)x / STEP;
-		for ( k = 3; k >= 0; k-- ) {	// 겹치면 앞의 리듬 (신체) 이 위에
+		for ( k = 3; k >= 0; k-- ) {	// 겹치면 앞의 리듬(신체)이 보인다
 			double v = sin(2 * PI * tt / R[k].days);
-			int lv = (int)floor((1 - v) / 2 * (LEVELS - 1) + 0.5);
-			who[lv / 3][x] = (signed char)k;
-			mark[lv / 3][x] = sub[lv % 3];
+			who[(int)floor((1 - v) / 2 * (ROWS - 1) + 0.5)][x] = (signed char)k;
 		}
 	}
-
-	// 위 테두리: ┌─ ● 신체 ● 감성 ● 지성 ● 지각 ───┐ (안쪽 COLS 칸)
-	printf(" " C_GRAY "     ┌─" C_WHITE);
-	legend_w = 2;
-	for ( k = 0; k < 4; k++ ) {
-		printf(" %s●" C_WHITE " %s", R[k].color, R[k].name);
-		legend_w += 1 + 2 + 1 + 4;
-	}
-	printf(" " C_GRAY);
-	legend_w += 1;
-	if ( legend_w % 2 ) { putchar(' '); legend_w++; }
-	for ( x = legend_w; x < COLS; x += 2 ) printf("─");
-	printf("┐" C_WHITE "\r\n");
-
 	for ( r = 0; r < ROWS; r++ ) {
-		// y 눈금: 위에서부터 +100, +50, 0, -50, -100 (두 줄마다)
-		const char *label = r == 0 ? "+100" : r == 2 ? " +50" : r == 4 ? "   0" : r == 6 ? " -50" : r == 8 ? "-100" : "    ";
+		const char *label = r == 0 ? "+100" : r == ROWS / 2 ? "   0" : r == ROWS - 1 ? "-100" : "    ";
 		int last = -2;
-		printf(" " C_GRAY "%s %s", label, r % 2 == 0 ? "┤" : "│");
+		printf(" " C_GRAY "%s |", label);
 		for ( x = 0; x < COLS; x++ ) {
 			int c = who[r][x];
-			int col = c >= 0 ? c : (x == today ? -3 : -1);
 			// 색이 바뀔 때만 색 코드를 보낸다
-			if ( col != last ) {
-				printf("%s", c >= 0 ? R[c].color : x == today ? C_YELLOW : C_DARK);
-				last = col;
-			}
-			if ( c >= 0 ) putchar(mark[r][x]);
-			else if ( x == today ) putchar(':');				// 오늘
-			else if ( r == ROWS / 2 ) putchar(x % 2 ? ' ' : '-');	// 0 줄
+			if ( c != last ) { printf("%s", c >= 0 ? R[c].color : C_DARK); last = c; }
+			if ( c >= 0 ) putchar('*');
+			else if ( x == -FROM * STEP ) putchar(':');		// 오늘
+			else if ( r == ROWS / 2 ) putchar(x % 2 ? ' ' : '.');	// 0 줄
 			else putchar(' ');
 		}
-		printf(C_GRAY "│" C_WHITE "\r\n");
+		printf(C_WHITE "\r\n");
 	}
-
-	// 아래 테두리: 이틀마다 ┬ (오늘은 노랑)
-	printf(" " C_GRAY "     └");
-	for ( x = 0; x < COLS; x += 2 ) {
-		if ( x == today ) printf(C_YELLOW "┬" C_GRAY);
-		else printf("%s", (x - today) % (2 * STEP) == 0 ? "┬" : "─");
-	}
-	printf("┘" C_WHITE "\r\n");
-
-	// 날짜: 눈금 아래. 오늘은 노랑, 달이 바뀌면 월/일
-	printf(" " C_GRAY "       ");
-	{
-		int col = 0, prev_mon = -1;
-		for ( x = 0; x < COLS; x++ ) {
-			char lab[16];
-			int mon, dd, len;
-			if ( (x - today) % (2 * STEP) != 0 ) continue;
-			dd = shift_date(y, m, d, FROM + x / STEP, &mon);
-			if ( prev_mon < 0 || mon != prev_mon ) snprintf(lab, sizeof(lab), "%d/%d", mon, dd);
-			else snprintf(lab, sizeof(lab), "%d", dd);
-			prev_mon = mon;
-			len = strlen(lab);
-			// 눈금 자리에 가운데 맞춤 (앞 글자와 겹치지 않게)
-			{
-				int at = x - len / 2;
-				if ( at < col ) at = col;
-				for ( ; col < at; col++ ) putchar(' ');
-			}
-			printf("%s%s" C_GRAY, x == today ? C_YELLOW : "", lab);
-			col += len;
-		}
+	// 날짜 줄: 그날이 시작하는 칸 아래
+	printf(" " C_GRAY "      ");
+	for ( x = 0; x < DAYS; x++ ) {
+		int dd = shift_date(y, m, d, FROM + x, NULL);
+		if ( x == -FROM ) printf(C_YELLOW "%-4d" C_GRAY, dd);
+		else printf("%-4d", dd);
 	}
 	printf(C_WHITE "\r\n");
 }
@@ -294,8 +226,9 @@ int main(int argc, char **argv)
 
 	{
 		int k;
-		printf(" %d년 %d월 %d일생, 태어난 지 " C_YELLOW "%ld" C_WHITE " 일째\r\n", uy, um, ud, t);
-		(void)k;
+		printf(" %d년 %d월 %d일생, 태어난 지 " C_YELLOW "%ld" C_WHITE " 일째  ", uy, um, ud, t);
+		for ( k = 0; k < 4; k++ ) printf("  %s*%s", R[k].color, R[k].name);
+		printf(C_WHITE "\r\n");
 	}
 	today_lines(t);
 	chart(t, ty, tm_, td);
