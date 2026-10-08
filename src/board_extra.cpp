@@ -1,4 +1,5 @@
 #include "main.h"
+#include <utmp.h>
 
 // ------------------------------------------------------------------
 // 게시판 덧붙임: 꼬리말(한 줄 댓글), 새 글 모아보기(NEW), 전체 게시판 검색(FIND)
@@ -439,6 +440,80 @@ static void mark_new_comments(std::vector<found_article> &list)
 			"' AND DATE_TIME > " + after;
 		if ( atoi(database::fetch((char*)q.c_str(), &ok).c_str()) > 0 ) list[i].mark = "◆ ";
 	}
+}
+
+// ------------------------------------------------------------------
+// 내 접속 기록 (LOG): 언제, 어느 노드로, 어디서 접속했고 얼마나 머물렀나
+// ------------------------------------------------------------------
+long login_log_no = 0;		// 이 접속의 login_log 번호 (끝낼 때 END_TIME)
+
+// 예전 login_log 에 HOST, END_TIME 칸을 더한다 (이미 있으면 ALTER 가 실패할 뿐)
+void login_log_upgrade(void)
+{
+	bool ok;
+	std::string n = database::fetch((char*)"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+			"AND TABLE_NAME='login_log' AND COLUMN_NAME='HOST'", &ok);
+	if ( ok && atoi(n.c_str()) == 0 ) {
+		mysql_query(mysql, "ALTER TABLE login_log ADD COLUMN HOST VARCHAR(64) NOT NULL DEFAULT '', "
+				"ADD COLUMN END_TIME DATETIME NULL, ADD KEY IDX_USER (USER_ID, DATE_TIME)");
+	}
+}
+
+// 이 터미널 (pts/<tty>) 로 들어온 곳: 텔넷 로그인이 utmp 에 남긴 주소. 모르면 ""
+std::string remote_host_of_tty(void)
+{
+	std::string line = std::string("pts/") + tty;
+	std::string host;
+	struct utmp *u;
+	setutent();
+	while ( (u = getutent()) != NULL ) {
+		if ( u->ut_type != USER_PROCESS ) continue;
+		if ( strncmp(u->ut_line, line.c_str(), sizeof(u->ut_line)) != 0 ) continue;
+		host = std::string(u->ut_host, strnlen(u->ut_host, sizeof(u->ut_host)));
+	}
+	endutent();
+	if ( host.empty() && getenv("REMOTEHOST") ) host = getenv("REMOTEHOST");
+	return display_text(host);
+}
+
+void show_login_log(void)
+{
+	std::string id = database::escape(login_user_id);
+	bool ok;
+	int total = atoi(database::fetch((char*)("SELECT COUNT(*) FROM login_log WHERE USER_ID='" + id + "'").c_str(), &ok).c_str());
+	int month = atoi(database::fetch((char*)("SELECT COUNT(*) FROM login_log WHERE USER_ID='" + id +
+					"' AND DATE_TIME >= DATE_FORMAT(NOW(), '%Y-%m-01')").c_str(), &ok).c_str());
+	std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)("SELECT NO, NODE, HOST, "
+				"DATE_FORMAT(DATE_TIME, '%Y-%m-%d %H:%i') AS T, DATE_FORMAT(DATE_TIME, '%w') AS W, "
+				"TIMESTAMPDIFF(MINUTE, DATE_TIME, END_TIME) AS M FROM login_log WHERE USER_ID='" + id +
+				"' ORDER BY NO DESC LIMIT 15").c_str());
+	static const char *wd[] = { "일", "월", "화", "수", "목", "금", "토" };
+
+	list_header(X_C "내 접속 기록" X_W, "");
+	printf("  모두 " X_Y "%d" X_W " 번,  이번 달 " X_Y "%d" X_W " 번  " X_G "(최근 15 번)" X_W "\r\n\r\n", total, month);
+	printf("  " X_G "%-21s %-8s %-30s %s" X_W "\r\n", "접속한 때", "노드", "접속한 곳", "머문 시간");
+	for ( unsigned int i = 0; i < r.size(); i++ ) {
+		std::string stay;
+		long no = atol(r[i]["NO"].c_str());
+		if ( no == login_log_no ) stay = X_Y "접속 중" X_W;
+		else if ( r[i]["M"].empty() ) stay = X_G "-" X_W;		// 끊긴 때를 모름 (예전 기록, 강제 종료)
+		else {
+			int m = atoi(r[i]["M"].c_str());
+			char b[32];
+			if ( m >= 60 ) snprintf(b, sizeof(b), "%d시간 %d분", m / 60, m % 60);
+			else snprintf(b, sizeof(b), "%d분", m < 1 ? 1 : m);
+			stay = b;
+		}
+		int w = atoi(r[i]["W"].c_str());
+		std::string when = r[i]["T"] + " (" + wd[w >= 0 && w < 7 ? w : 0] + ")";
+		std::string host = r[i]["HOST"].empty() ? "-" : string_truncate(r[i]["HOST"], 30, "");
+		printf("  %s%-21s %-8s %-30s %s" X_W "\r\n", no == login_log_no ? X_Y : X_W, when.c_str(),
+				("pts/" + r[i]["NODE"]).c_str(), host.c_str(), stay.c_str());
+	}
+	if ( r.empty() ) printf("  " X_G "아직 기록이 없습니다." X_W "\r\n");
+	printf("\r\n  " X_G "모르는 접속이 있으면 비밀번호를 바꾸고 (PE) 운영자에게 알려 주세요." X_W "\r\n");
+	printf("\r\n[Enter] 를 누르세요.");
+	press_enter();
 }
 
 // ------------------------------------------------------------------

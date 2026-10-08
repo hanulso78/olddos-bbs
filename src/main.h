@@ -208,6 +208,10 @@ void show_best(std::string arg);
 void show_my(std::string arg);
 void scrap_init(void);
 void scrap_toggle(const char *table, int no);
+extern long login_log_no;
+void login_log_upgrade(void);
+std::string remote_host_of_tty(void);
+void show_login_log(void);
 // 게시판 구독: 들어가 있는 게시판 (board_scope 가 들어갈 때 정하고 나올 때 되돌린다)
 extern std::string current_board;
 struct board_scope {

@@ -57,6 +57,7 @@ int main(int argc, char **argv)
 			"UNTIL DATETIME NULL, REASON VARCHAR(255) NOT NULL, BY_ID VARCHAR(50) NOT NULL, DATE_TIME DATETIME NOT NULL )");
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_log ( NO INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, "
 			"USER_ID VARCHAR(50) NOT NULL, NODE VARCHAR(16) NOT NULL, DATE_TIME DATETIME NOT NULL, KEY IDX_DATE (DATE_TIME) )");
+	login_log_upgrade();
 
 	// 랜덤 대문 출력
 	std::vector<std::string> door_files = find_files("txt/door/*");
@@ -175,9 +176,10 @@ int main(int argc, char **argv)
 	// 오늘 최고 동시 접속 기록
 	stats_record_online();
 	{
-		std::string q = "INSERT INTO login_log (USER_ID, NODE, DATE_TIME) VALUES ('" + database::escape(login_user_id) +
-			"', '" + database::escape(tty) + "', NOW())";
-		mysql_query(mysql, q.c_str());
+		// 접속한 곳 (텔넷 로그인이 utmp 에 남긴 주소) 과 함께. 끝낼 때 END_TIME 을 적는다 (host_close)
+		std::string q = "INSERT INTO login_log (USER_ID, NODE, DATE_TIME, HOST) VALUES ('" + database::escape(login_user_id) +
+			"', '" + database::escape(tty) + "', NOW(), '" + database::escape(remote_host_of_tty().c_str()) + "')";
+		if ( mysql_query(mysql, q.c_str()) == 0 ) login_log_no = (long)mysql_insert_id(mysql);
 	}
 
 	// 강제 종료 등으로 남은 오래된 임시 파일 정리 (한 시간에 한 번)
@@ -1604,6 +1606,13 @@ int host_close (void)
 
 	database::set_lastlogin_datetime(login_user_id);
 
+	// 내 접속 기록 (LOG) 의 머문 시간
+	if ( login_log_no > 0 ) {
+		char q[128];
+		snprintf(q, sizeof(q), "UPDATE login_log SET END_TIME=NOW() WHERE NO=%ld", login_log_no);
+		mysql_query(mysql, q);
+	}
+
 	database::close();
 
     ioctl(0, TCSETAF, &sys_term);
@@ -1798,6 +1807,9 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 			show_best(args.size() > 1 ? args[1] : "");
 
 		// 내 글 (MY), 꼬리말 단 글 (MY C), 스크랩 (MY S)
+		} else if ( !strcasecmp(args[0].c_str(), "log") ) {
+			show_login_log();
+
 		} else if ( !strcasecmp(args[0].c_str(), "my") ) {
 			show_my(args.size() > 1 ? args[1] : "");
 
