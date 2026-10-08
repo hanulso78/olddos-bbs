@@ -20,7 +20,7 @@ endif
 .c.o: ; $(CC) -c $(CFLAGS) -o $*.o $<
 .cpp.o: ; $(CXX) -c $(CFLAGS) -o $*.o $<
 
-all: ctime main guest pass sysop weather exchange lunar hero rain omok baseball mine blackjack tgsend lotto coin sun worldtime english love tojeong today fortune mudlink memo biorhythm chattclient chattserver mbti_gs aichat typing cafeimport zipcode zork1
+all: ctime main guest pass sysop weather exchange lunar hero rain omok baseball mine blackjack tgsend lotto coin sun worldtime english love tojeong today fortune mudlink memo biorhythm chattclient chattserver mbti_gs aichat typing cafeimport zipcode zork1 gkermit
 
 # 글쓰기 화면 편집기 pico (src/pico/pico, 한글 고침). ncurses-devel 이 필요하다.
 # all 에는 넣지 않는다 (서버에 ncurses-devel 이 없으면 BBS 업데이트가 통째로 실패하므로).
@@ -200,8 +200,15 @@ chattserver: chattserver.o
 	$(CXX) -o ../bin/$@ chattserver.o 
 	$(STRIP) ../bin/$@
 
+# 파일 주고받기 Kermit (G-Kermit 2.01). 받는 파일 이름에서 경로를 떼도록 고친 것 (src/gkermit/README)
+# 원래 gkermit 은 보내는 쪽이 ../../hanulso.cfg 같은 이름을 보내면 받는 폴더 밖에 썼다
+.PHONY: gkermit
+gkermit:
+	cd gkermit && $(MAKE) CC=gcc KFLAGS="-std=gnu89 -w" posix && cp gkermit ../../bin/gkermit
+
 clean:
 	$(RM) *.o zork1/*.o
+	$(RM) gkermit/*.o gkermit/gwart gkermit/gproto.c gkermit/gkermit
 
 main.o : main.cpp
 database.o : database.cpp

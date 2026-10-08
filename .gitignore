@@ -32,3 +32,9 @@ data/
 
 # 운영자 메뉴의 DB 백업 (회원 정보가 들어 있다)
 backup/
+
+# gkermit 빌드 부산물 (cd src && make gkermit)
+src/gkermit/*.o
+src/gkermit/gwart
+src/gkermit/gproto.c
+src/gkermit/gkermit
