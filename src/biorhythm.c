@@ -231,6 +231,7 @@ int main(int argc, char **argv)
 		printf(C_WHITE "\r\n");
 	}
 	today_lines(t);
+	printf("\r\n");		// 막대와 그래프 사이 한 줄
 	chart(t, ty, tm_, td);
 	criticals(t, ty, tm_, td);
 	advice(t, 1);
