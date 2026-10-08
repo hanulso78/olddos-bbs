@@ -162,11 +162,6 @@
 				<name>타자 연습 (typing)</name>
 			</item>
 
-			<!-- 윷놀이 (컴퓨터와, 윷가락이 굴러가는 모습) -->
-			<item type="program" prog="yut" go="yut" door="11" access_level="1">
-				<name>윷놀이 (yut)</name>
-			</item>
-
 			<!-- 조크 I (Infocom 1980) 한글판. src/zork1 (원작 게임 파일 + 번역표), 1 인용, 아이디별 저장 -->
 			<item type="program" prog="zork1" go="zork" door="10" access_level="1">
 				<name>조크 I (zork)</name>
