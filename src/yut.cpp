@@ -291,9 +291,10 @@ static void draw_stick(int i, int flat)
 			else if ( r == 1 || r == 3 || r == 5 ) printf("××");
 			else printf("    ");
 		} else {
-			// 등 (둥근 면): 붉은 나무결, 양 끝은 둥글게 비운다
-			if ( r == 0 || r == 6 ) printf(BG_OFF "    ");
-			else printf("\033[=4G\033[=12F▒▒");
+			// 등 (둥근 면): 붉은 나무결, 배와 같은 길이.
+			// 왼쪽은 밝게, 오른쪽과 양 끝은 어둡게 칠해 둥글게 튀어나와 보이게 한다
+			if ( r == 0 || r == 6 ) printf("\033[=4G\033[=0F▒▒");
+			else printf("\033[=4G\033[=12F▒\033[=0F▒");
 		}
 	}
 	at(SR - 1, c);
