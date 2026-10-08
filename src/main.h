@@ -241,6 +241,7 @@ void print_luck(char *user_id);
 void print_user_info(char *user_id);
 
 bool edit_profile(char *user_id);
+void profile_upgrade(void);
 
 std::string get_level_name(int user_level);
 bool check_exist_level(int user_level);

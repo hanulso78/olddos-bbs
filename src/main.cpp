@@ -58,6 +58,7 @@ int main(int argc, char **argv)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_log ( NO INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, "
 			"USER_ID VARCHAR(50) NOT NULL, NODE VARCHAR(16) NOT NULL, DATE_TIME DATETIME NOT NULL, KEY IDX_DATE (DATE_TIME) )");
 	login_log_upgrade();
+	profile_upgrade();		// member.INTRO (자기소개)
 
 	// 랜덤 대문 출력
 	std::vector<std::string> door_files = find_files("txt/door/*");
@@ -2257,7 +2258,12 @@ void print_user_info(char *user_id)
 		printf("\r\n레    벨: %s", user_level_name.c_str());
 	}
 	//printf("\r\n생    일: %s", user["BIRTHDAY"].c_str());
-	printf("\r\n이 메 일: %s", user["EMAIL"].c_str());
+	// 이메일은 정보 공개 (PE 6) 한 회원만 남에게 보인다. 본인과 운영자는 늘
+	if ( atoi(user["IS_OPEN"].c_str()) != 0 || !strcmp(user_id, login_user_id) || login_user_is_admin ) {
+		printf("\r\n이 메 일: %s", display_text(user["EMAIL"]).c_str());
+	} else {
+		printf("\r\n이 메 일: \033[=7F(비공개)\033[=15F");
+	}
 	printf("\r\n가 입 일: %s", user["REGISTRATION_DATETIME"].c_str());
 	if ( user["LASTLOGIN_DATETIME"].length() > 0 ) {
 		printf("\r\n최근접속: %s", user["LASTLOGIN_DATETIME"].c_str());
@@ -2271,6 +2277,8 @@ void print_user_info(char *user_id)
 	} else {
 		printf("여자");
 	}
+	std::string intro = display_text(user["INTRO"]);
+	if ( !intro.empty() ) printf("\r\n자기소개: \033[=14F%s\033[=15F", intro.c_str());
 	//printf("\r\n");
 }
 
