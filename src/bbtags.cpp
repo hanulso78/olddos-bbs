@@ -405,12 +405,13 @@ static long menu_articles(pugi::xml_node node, int *boards)
 	return total;
 }
 
-// 3 칸 안으로 (괄호를 붙여 5 칸): 999 까지는 그대로, 그보다 많으면 1k, 12k ...
+// 4 칸 안으로 (괄호를 붙여 6 칸): 999 까지는 그대로, 9.9k 까지는 1.3k 처럼 소수 한 자리, 그 위는 12k, 135k ...
 static std::string compact_count(long n)
 {
 	char buf[32];
 	if ( n < 1000 ) snprintf(buf, sizeof(buf), "%ld", n);
-	else snprintf(buf, sizeof(buf), "%ldk", n / 1000 > 999 ? 999 : n / 1000);
+	else if ( n < 10000 ) snprintf(buf, sizeof(buf), "%ld.%ldk", n / 1000, (n % 1000) / 100);	// 버림: 1,399 -> 1.3k
+	else snprintf(buf, sizeof(buf), "%ldk", n / 1000 > 9999 ? 9999 : n / 1000);
 	return buf;
 }
 
@@ -429,7 +430,7 @@ static std::string articles_of(const std::string &door)
 		} else if ( !strcmp(c.attribute("type").value(), "menu") ) {
 			n = menu_articles(c, &boards);
 		}
-		return boards > 0 ? "(" + compact_count(n) + ")" : "";		// (57), (1k)
+		return boards > 0 ? "(" + compact_count(n) + ")" : "";		// (57), (1.3k), (12k)
 	}
 	return "";
 }
