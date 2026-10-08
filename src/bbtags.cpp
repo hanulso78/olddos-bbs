@@ -435,6 +435,51 @@ static std::string articles_of(const std::string &door)
 	return "";
 }
 
+// 게시판에 오늘 올라온 글이 있나 (60 초 동안 기억). 최근 20 개 글만 본다 (NO 가 큰 쪽이 새 글)
+static bool board_new_today(const std::string &table)
+{
+	static std::map<std::string, std::pair<time_t, bool> > cache;
+	std::map<std::string, std::pair<time_t, bool> >::iterator it = cache.find(table);
+	if ( it != cache.end() && time(NULL) - it->second.first < 60 ) return it->second.second;
+	bool ok;
+	std::string v = database::fetch((char*)("SELECT COUNT(*) FROM (SELECT DATE_TIME FROM " + table +
+				" ORDER BY NO DESC LIMIT 20) X WHERE DATE_TIME >= CURDATE()").c_str(), &ok);
+	bool yes = ok && atol(v.c_str()) > 0;
+	cache[table] = std::make_pair(time(NULL), yes);
+	return yes;
+}
+
+static bool menu_new_today(pugi::xml_node node)
+{
+	for ( pugi::xml_node c = node.first_child(); c; c = c.next_sibling() ) {
+		if ( strcmp(c.name(), "item") ) continue;
+		if ( !strcmp(c.attribute("type").value(), "board") && !c.attribute("id").empty() ) {
+			if ( board_new_today(c.attribute("id").value()) ) return true;
+		} else if ( !strcmp(c.attribute("type").value(), "menu") ) {
+			if ( menu_new_today(c) ) return true;
+		}
+	}
+	return false;
+}
+
+// [new_번호] : 지금 메뉴에서 그 번호 게시판 (하위 메뉴면 그 안의 게시판 중 하나라도) 에 오늘 글이 있으면 "N", 없으면 ""
+//   화면 파일에서는 [new_1? (%s)] 처럼 있을 때만 보이게 쓴다
+static std::string new_of(const std::string &door)
+{
+	if ( !current_menu ) return "";
+	for ( pugi::xml_node c = current_menu.first_child(); c; c = c.next_sibling() ) {
+		if ( strcmp(c.name(), "item") || door != c.attribute("door").value() ) continue;
+		bool yes = false;
+		if ( !strcmp(c.attribute("type").value(), "board") && !c.attribute("id").empty() ) {
+			yes = board_new_today(c.attribute("id").value());
+		} else if ( !strcmp(c.attribute("type").value(), "menu") ) {
+			yes = menu_new_today(c);
+		}
+		return yes ? "N" : "";
+	}
+	return "";
+}
+
 // replace_bbcode 가 모르는 태그. 모르는 이름이면 found = false (태그를 그대로 둔다)
 std::string bbtag_value(const std::string &name, bool *found)
 {
@@ -442,6 +487,7 @@ std::string bbtag_value(const std::string &name, bool *found)
 	*found = true;
 	if ( user_value(name, out) ) return out;
 	if ( name.compare(0, 9, "articles_") == 0 ) return articles_of(name.substr(9));
+	if ( name.compare(0, 4, "new_") == 0 ) return new_of(name.substr(4));
 
 	if ( name == "since_days" ) return since_days();
 	if ( name == "random_tip" ) return random_tip();
