@@ -93,7 +93,11 @@ bool file_download(int protocol, char *tmp_filename, char *filename, std::string
     }
 	//sprintf(buf, "%s/bin/sexyz sz \"%s\"", getenv("HANULSO"), filename);
 	// 전송 프로그램의 메시지 (stderr) 는 파일로 받아 실패하면 마지막 줄을 보여 준다
-	std::string errfile = std::string(tmpdir) + "/.sz.err";
+	// 링크 폴더 밖에 둔다 (첨부 본래 이름과 겹치면 그 첨부 파일을 비워 버린다)
+	std::string errfile = make_private_tmpfile("sz_err");
+	struct errfile_guard { std::string p; ~errfile_guard() { if ( !p.empty() ) unlink(p.c_str()); } } eg;
+	eg.p = errfile;
+	if ( errfile.empty() ) errfile = "/dev/null";
 	strncat(buf, (" 2>" + shell_quote(errfile)).c_str(), sizeof(buf) - strlen(buf) - 1);
 	ioctl(0, TCSETAF, &sys_term);
 	a = system(buf);

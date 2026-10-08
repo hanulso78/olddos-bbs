@@ -112,6 +112,13 @@ static bool change_birthday(char *user_id)
 
 static bool change_email(char *user_id, const std::string &cur)
 {
+	// 비밀번호 찾기 (PASS) 가 이 주소로 가므로, 지금 비밀번호를 확인한다 (자리를 비운 사이 남이 바꾸지 못하게)
+	std::string now = ask_line("지금 비밀번호 (Enter: 취소) : ", 40, false, 3);
+	if ( now.empty() ) return false;
+	if ( !database::check_same_password(user_id, (char*)now.c_str()) ) {
+		note(P_R, "비밀번호가 틀렸습니다.");
+		return false;
+	}
 	note(P_G, "비밀번호를 잊었을 때 (PASS) 이 주소로 보냅니다.");
 	while ( 1 ) {
 		std::string e = ask_line("새 이메일 (Enter: 취소) : ", 50, false);

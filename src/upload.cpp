@@ -15,7 +15,7 @@ static std::string safe_name(const char *s)
 	}
 	if ( r.empty() || r == "." || r == ".." )
 		r = "xmodem.bin";
-	if ( r[0] == '-' )                  // sz / gkermit 가 옵션으로 읽지 않게
+	if ( r[0] == '-' || r[0] == '.' )   // sz / gkermit 가 옵션으로 읽지 않게, 숨김 / 내부 파일과 겹치지 않게
 		r[0] = '_';
 	return r;
 }

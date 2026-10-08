@@ -58,6 +58,12 @@ int main(int argc, char **argv)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_log ( NO INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, "
 			"USER_ID VARCHAR(50) NOT NULL, NODE VARCHAR(16) NOT NULL, DATE_TIME DATETIME NOT NULL, KEY IDX_DATE (DATE_TIME) )");
 	login_log_upgrade();
+	// 로그인 실패 (같은 아이디로 10 분 안에 5 번 틀리면 10 분 잠금)
+	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_fail ( USER_ID VARCHAR(50) NOT NULL PRIMARY KEY, "
+			"FAILS INT NOT NULL, LAST DATETIME NOT NULL )");
+	// 추천은 한 사람이 한 글에 한 번
+	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS recommend ( USER_ID VARCHAR(50) NOT NULL, BOARD VARCHAR(64) NOT NULL, "
+			"NO INT NOT NULL, DATE_TIME DATETIME NOT NULL, PRIMARY KEY (USER_ID, BOARD, NO) )");
 	profile_upgrade();		// member.INTRO (자기소개)
 
 	// 랜덤 대문 출력
@@ -100,45 +106,45 @@ int main(int argc, char **argv)
 			execl(buf, "pass", tty, (char*)0);
 			host_close();
 
-		// 회원 검사
+		// 회원 검사: 아이디와 비밀번호를 함께 받고, 어느 쪽이 틀렸는지는 알려 주지 않는다 (아이디 알아내기 막기)
+		} else if ( strlen(login_user_id) == 0 ) {
+			printf("\r\n 아이디를 입력해주세요.");
+
 		} else {
-			if ( strlen(login_user_id) == 0 ) {
-				printf("\r\n 아이디를 입력해주세요.");
+			// 비밀번호 (가입은 40 자까지 받으므로 40 자까지. 예전에는 20 자라 긴 비밀번호로는 들어올 수 없었다)
+			char passwd[50];
+			printf("\r\n 비밀번호 : ");
+			line_input_echo(passwd, 40);
+
+			std::string fid = database::escape(login_user_id);
+			bool ok;
+			int locked = atoi(database::fetch((char*)("SELECT COUNT(*) FROM login_fail WHERE USER_ID='" + fid +
+						"' AND FAILS >= 5 AND LAST > NOW() - INTERVAL 10 MINUTE").c_str(), &ok).c_str());
+			if ( locked > 0 ) {
+				printf("\r\n 로그인을 여러 번 틀려 이 아이디는 10 분 동안 잠겼습니다. 잠시 뒤에 다시 해 주세요.");
+				sleep(2);
+			} else if ( strlen(passwd) > 0 && database::exist_user_id(login_user_id) &&
+					database::check_same_password(login_user_id, passwd) ) {
+				mysql_query(mysql, ("DELETE FROM login_fail WHERE USER_ID='" + fid + "'").c_str());
+				break;
 			} else {
-				if ( database::exist_user_id(login_user_id) == false ) {
-					printf("\r\n 등록된 아이디가 없습니다.");
-				} else {
-					break;
+				if ( database::exist_user_id(login_user_id) ) {
+					mysql_query(mysql, ("INSERT INTO login_fail (USER_ID, FAILS, LAST) VALUES ('" + fid + "', 1, NOW()) "
+								"ON DUPLICATE KEY UPDATE FAILS = IF(LAST < NOW() - INTERVAL 10 MINUTE, 1, FAILS + 1), LAST = NOW()").c_str());
 				}
+				printf("\r\n 아이디나 비밀번호가 틀렸습니다.");
+				sleep(2);		// 빨리 여러 번 맞혀 보지 못하게
 			}
 		}
 
 		retry+=1;
 	}
 
-	retry = 0;
-	while (1) {
-		if ( retry == 3 ) {
-			host_close();
-		}
-
-		// 비밀번호 입력
-		char passwd[50];
-		printf("\r\n 비밀번호 : ");
-		line_input_echo(passwd, 20);
-
-		if ( strlen(passwd) == 0 ) {
-			printf("\r\n 비밀번호를 입력해주세요.");
-
-		} else {
-			if ( database::check_same_password(login_user_id, passwd) == false ) {
-				printf("\r\n 비밀번호가 틀렸습니다.");
-			} else {
-				break;
-			}
-		}
-
-		retry+=1;
+	// 아이디는 DB 에 적힌 그대로 (대소문자를 달리 넣어 '작성자' 확인을 비켜 가지 못하게)
+	{
+		bool ex;
+		std::map<std::string, std::string> u = database::user_info(login_user_id, &ex);
+		if ( ex && !u["USER_ID"].empty() ) snprintf(login_user_id, sizeof(login_user_id), "%s", u["USER_ID"].c_str());
 	}
 
 	// 이용 정지 (운영자 메뉴): 기간과 사유를 보여 주고 끊는다
@@ -168,7 +174,12 @@ int main(int argc, char **argv)
 	sprintf(buf, "%s/tmp/%s.tty", getenv("HANULSO"), tty);
 
 	// 아이디와 함께 pid 를 적어 두어, 강제 종료로 파일이 남아도 접속자 목록에서 걸러낸다
-	FILE *fp = fopen(buf, "w");
+	// 주인만 쓰게 0600 (운영자 메뉴가 이 파일의 아이디로 운영자인지 본다)
+	FILE *fp = NULL;
+	{
+		int fd = open(buf, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0600);
+		if ( fd >= 0 ) { fchmod(fd, 0600); fp = fdopen(fd, "w"); }
+	}
 	if ( fp != NULL ) {
 		fprintf(fp, "%s %d", login_user_id, (int)getpid());
 		fclose(fp);
@@ -201,7 +212,7 @@ int main(int argc, char **argv)
 
 	printf("\r\n");
 	printf("\r\n [가 입 일] : %s", user["REGISTRATION_DATETIME"].c_str());
-	printf("\r\n [닉 네 임] : %s", user["NICK_NAME"].c_str());
+	printf("\r\n [닉 네 임] : %s", display_text(user["NICK_NAME"]).c_str());
 	if ( std::find(sysop_users.begin(), sysop_users.end(), login_user_id) != sysop_users.end() ) {
 		printf("\r\n [레    벨] : 시숍(운영자)");
 	} else {
@@ -545,7 +556,7 @@ void show_board(pugi::xml_node node)
 		// 아이디로 검색
 		} else if ( strlen(search_li) > 0 ) {
 			snprintf(sql, sizeof(sql), "SELECT * FROM %s "
-					"WHERE USER_ID LIKE '%%%s%%' "
+					"WHERE USER_ID = '%s' "
 					"ORDER BY FAMILY DESC, ORDERBY ASC LIMIT %d, %d",
 					table_name, database::escape(search_li).c_str(), offset, show_max_line);
 
@@ -557,7 +568,7 @@ void show_board(pugi::xml_node node)
             if ( exist ) {
                 user_id = user["USER_ID"].c_str();
                 snprintf(sql, sizeof(sql), "SELECT * FROM %s "
-                        "WHERE USER_ID LIKE '%%%s%%' "
+                        "WHERE USER_ID = '%s' "
                         "ORDER BY FAMILY DESC, ORDERBY ASC LIMIT %d, %d",
                         table_name, database::escape(user_id).c_str(), offset, show_max_line);
             }
@@ -654,7 +665,7 @@ void show_board(pugi::xml_node node)
 #endif
 				bool pinned = row["_PIN"] == "1";
 				if ( pinned ) title << "[공지] ";
-				title << row[std::string("TITLE")];
+				title << safe_terminal_text(row[std::string("TITLE")]);
 
 				// 날짜를 YY-MM-DD 로 늘린 만큼 제목을 줄임 (한 줄 79 자)
 				// 꼬리말이 있으면 제목 뒤에 [수]
@@ -1001,6 +1012,8 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
         std::string txt = std::string(row[std::string("CONTENT")].c_str());
         txt = trim(txt);
         std::vector<std::string> lines = split_string_with_width(txt, '\n', 80);
+        // 다른 회원 화면에 찍으므로 위험한 제어 문자는 뺀다 (파일 올리기 / 화면 편집기로 쓴 글에 들어올 수 있다)
+        for ( unsigned int li = 0; li < lines.size(); li++ ) lines[li] = safe_terminal_text(lines[li]);
         // 본문 뒤에 꼬리말
         std::vector<std::string> clines = comment_lines(table_name, no);
         lines.insert(lines.end(), clines.begin(), clines.end());
@@ -1021,7 +1034,7 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 		bool exist;
 		std::map<std::string, std::string> user = database::user_info((char*)row["USER_ID"].c_str(), &exist);
 
-		std::string title = row[std::string("TITLE")];
+		std::string title = safe_terminal_text(row[std::string("TITLE")]);
 		title = string_truncate(title, 60, "");
         printf("\033[4;1H");
 		printf(" 제  목: %-60s\r\n", title.c_str());
@@ -1165,7 +1178,7 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 					int author_level = atoi(user["LEVEL"].c_str());
 
 					printf("\r\n'%s(%s)' 님의 등급은 '%s' 입니다.", 
-						user["NICK_NAME"].c_str(), row[std::string("USER_ID")].c_str(),
+						display_text(user["NICK_NAME"]).c_str(), row[std::string("USER_ID")].c_str(),
 						get_level_name(author_level).c_str());
 					printf("\r\n새로운 등급을 선택하세요.");
 					printf("\r\n");
@@ -1519,8 +1532,16 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 					press_enter();
 
 				} else {
+					// 한 사람이 한 글에 한 번만
+					std::string rq = "INSERT IGNORE INTO recommend (USER_ID, BOARD, NO, DATE_TIME) VALUES ('" +
+						database::escape(login_user_id) + "', '" + database::escape(table_name) + "', " + TO_STRING(no) + ", NOW())";
+					mysql_query(mysql, rq.c_str());
+					if ( mysql_affected_rows(mysql) != 1 ) {
+						printf("\r\n이미 추천한 글입니다.");
+						printf("\r\n[Enter] 를 누르세요.");
+						press_enter();
 					// 게시글의 추천수 증가 시킴
-					if ( database::increase_recommend(table_name, no) ) {
+					} else if ( database::increase_recommend(table_name, no) ) {
 						printf("\r\n해당 게시글을 추천 하였습니다.");
 						printf("\r\n[Enter] 를 누르세요.");
 						press_enter();
@@ -1531,7 +1552,12 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 			// 답글 달기
 			if ( !strcasecmp(args[0].c_str(), "re") ) {
 				bool ok = true;
-				if ( reply == false )  {
+				if ( !login_user_is_admin && board_sysop_only(table_name) ) {
+					printf("\r\n운영자만 글을 쓸 수 있는 게시판입니다.");
+					printf("\r\n[Enter] 를 누르세요.");
+					press_enter();
+					ok = false;
+				} else if ( reply == false )  {
 					printf("\r\n");
 					printf("답글 쓰기가 금지되어있는 게시판입니다.\r\n");
 					printf("[Enter]를 누르세요.");
@@ -1559,7 +1585,7 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 
 				char author[1024];
 				char date_time[1024];
-				sprintf(author, " 작성자: %s (%s)", row[std::string("USER_ID")].c_str(), user["NICK_NAME"].c_str());
+				snprintf(author, sizeof(author), " 작성자: %s (%s)", row[std::string("USER_ID")].c_str(), display_text(user["NICK_NAME"]).c_str());
 				sprintf(date_time, "%s", row[std::string("DATE_TIME")].c_str());
 				printf("%-54s%-24s", author, date_time);
 				printf("\r\n%s\r\n", repeat("─", 40).c_str());
@@ -1875,7 +1901,7 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 					std::map<std::string, std::string> user = database::user_info((char*)user_id.c_str(), &exist);
 
 					char buf[1024];
-					sprintf(buf, "%s(%s)", user["NICK_NAME"].c_str(), user["USER_ID"].c_str());
+					snprintf(buf, sizeof(buf), "%s(%s)", display_text(user["NICK_NAME"]).c_str(), user["USER_ID"].c_str());
 				
 					std::string node = split_string(split_file_name(files[i]), '.')[0];
 
@@ -1972,10 +1998,10 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 			char user_id[50];
 
 			if ( args.size() > 1 ) {
-				sprintf(user_id, "%s", args[1].c_str());
+				snprintf(user_id, sizeof(user_id), "%s", args[1].c_str());
 
 			} else {
-				sprintf(user_id, "%s", login_user_id);
+				snprintf(user_id, sizeof(user_id), "%s", login_user_id);
 			}
 
 			if ( strlen(user_id) > 0 ) {
@@ -2254,9 +2280,9 @@ void print_user_info(char *user_id)
 {
 	bool exist;
 	std::map<std::string, std::string> user = database::user_info(user_id, &exist);
-	printf("\r\n'%s'님의 회원 정보입니다.", user["NICK_NAME"].c_str());
+	printf("\r\n'%s'님의 회원 정보입니다.", display_text(user["NICK_NAME"]).c_str());
 	printf("\r\n이용자ID: %s", user["USER_ID"].c_str());
-	printf("\r\n닉 네 임: %s", user["NICK_NAME"].c_str());
+	printf("\r\n닉 네 임: %s", display_text(user["NICK_NAME"]).c_str());
 
 	if ( std::find(sysop_users.begin(), sysop_users.end(), user_id) != sysop_users.end() ) {
 		printf("\r\n레    벨: 시숍(운영자)");

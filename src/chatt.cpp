@@ -141,7 +141,8 @@ void show_chatt_rooms(pugi::xml_node node, bool *goto_top)
 				bool exist;
 				std::map<std::string, std::string> user = 
 					database::user_info((char*)author.c_str(), &exist);
-				const char *nick_name = user["NICK_NAME"].c_str();
+				std::string nick_s = display_text(user["NICK_NAME"]);
+				const char *nick_name = nick_s.c_str();
 				if ( author.empty() ) nick_name = "누구나";		// 방장이 없는 방 (만남의 광장)
 
 				printf("%5s %s %s %s %s",

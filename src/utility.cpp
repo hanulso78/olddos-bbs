@@ -134,10 +134,25 @@ std::vector<std::string> find_files_time_sorted(char *dir)
 	return files;
 }
 
+// $HANULSO/tmp 에 빈 임시 파일을 만들어 (mkstemp, 0600) 그 경로를 돌려준다. 못 만들면 ""
+// (tempnam 은 이름만 고르고 만들지 않아, 남이 같은 이름으로 심볼릭 링크를 먼저 놓을 수 있다)
+std::string make_private_tmpfile(const char *prefix)
+{
+	char path[1024];
+	snprintf(path, sizeof(path), "%s/tmp/%s.XXXXXX", getenv("HANULSO") ? getenv("HANULSO") : ".", prefix);
+	int fd = mkstemp(path);
+	if ( fd < 0 ) return "";
+	fchmod(fd, 0600);
+	close(fd);
+	return path;
+}
+
 std::string query_luck(int yy, int mm, int dd, int sex, int birth_yy, int birth_mm, int birth_dd, int lunar, int yun)
 {
+	std::string tmp_path = make_private_tmpfile("luck");
+	if ( tmp_path.empty() ) return "";
 	char tmp_file[1024];
-	sprintf(tmp_file, "%s", tempnam("/tmp", "luck"));
+	snprintf(tmp_file, sizeof(tmp_file), "%s", tmp_path.c_str());
 
 	char www[1024];
 	sprintf(www, "http://today.freeunse.funstory.biz/sub/tradition1.php?unse_mode=1"
@@ -155,15 +170,14 @@ std::string query_luck(int yy, int mm, int dd, int sex, int birth_yy, int birth_
 		"&unse1_lun_yn=%d", 
 		yy, mm, dd, sex, birth_yy, birth_mm, birth_dd, lunar, yun);
 
-	char buf[1024];
-	sprintf(buf, "lynx -dump -nomargins -width=70 -assume_charset=euc-kr -display_charset=euc-kr '%s'"
-		"| sed 's/ㆍ/* /g' > '%s'", www, tmp_file);
+	char buf[2048];
+	snprintf(buf, sizeof(buf), "lynx -dump -nomargins -width=70 -assume_charset=euc-kr -display_charset=euc-kr %s"
+		"| sed 's/ㆍ/* /g' > %s", shell_quote(www).c_str(), shell_quote(tmp_file).c_str());
 	system(buf);
 
 	std::string txt = read_file(tmp_file);
 
-	sprintf(buf, "rm -f %s", tmp_file);
-	system(buf);
+	unlink(tmp_file);
 
 	return txt;
 }
@@ -567,6 +581,37 @@ int notify_online(const std::string &user_id, const std::string &line, bool sign
 		n++;
 	}
 	return n;
+}
+
+// 남이 쓴 글 (본문 / 제목) 을 다른 회원 화면에 찍기 전에: 색 바꾸기 (ESC [ ... m / F / G) 만 두고
+// 다른 ESC 열 (커서 옮기기, 글쇠 바꾸기 ...) 과 제어 문자 (특히 CAN 0x18 - ZMODEM 시작 신호로 읽는 쪽
+// 통신 프로그램이 파일 받기 / 보내기를 시작할 수 있다) 는 뺀다. 탭은 빈칸 하나로. 완성형 등 높은 바이트는 그대로
+std::string safe_terminal_text(const std::string &s)
+{
+	std::string r;
+	for ( unsigned int i = 0; i < s.size(); i++ ) {
+		unsigned char c = s[i];
+		if ( c == 0x1b ) {
+			// ESC [ (숫자 ; = ?)* 끝 글자
+			unsigned int k = i + 1;
+			if ( k < s.size() && s[k] == '[' ) {
+				k++;
+				while ( k < s.size() && (isdigit((unsigned char)s[k]) || s[k] == ';' || s[k] == '=' || s[k] == '?') ) k++;
+				if ( k < s.size() ) {
+					char f = s[k];
+					bool color = (f == 'm' || f == 'F' || f == 'G') && s.find('?', i) != i + 2;
+					if ( color ) r.append(s, i, k - i + 1);
+					i = k;
+					continue;
+				}
+			}
+			continue;		// 혼자 있는 ESC 나 다른 열은 버린다
+		}
+		if ( c == '\t' ) { r += ' '; continue; }
+		if ( c < 0x20 || c == 0x7f ) continue;
+		r += (char)c;
+	}
+	return r;
 }
 
 // 화면에 보이는 글자만 남긴다: 일반 ASCII 와 완성형(KS X 1001) 2 바이트 글자.
@@ -1207,24 +1252,17 @@ bool is_email_valid(const char *address)
 // 폴더를 생성한다.
 bool mkdir2 (char *dir)
 {
-	char buf[9072];
-
-	// 폴더 생성
-	sprintf(buf, "mkdir -p \"%s\"", dir);
-	int a = system(buf);
-	if ( WEXITSTATUS(a) != 0 ) {
-		printf("\r\n업로드 폴더를 생성하는데 실패하였습니다.\r\n");
+	// 새로 만들 때만 (이미 있는 이름 = 남이 먼저 놓은 폴더나 심볼릭 링크일 수 있다). 주인만 쓰게 0700.
+	// 예전에는 mkdir -p (있어도 성공) 뒤 chmod 777 이라 미리 놓은 링크를 따라가 다른 폴더를 열어 버릴 수 있었다
+	if ( mkdir(dir, 0700) != 0 ) {
+		printf("\r\n임시 폴더를 만들지 못했습니다: %s\r\n", strerror(errno));
 		return false;
 	}
-
-	// 권한 변경
-	sprintf(buf, "chmod 777 \"%s\"", dir);
-	a = system(buf);
-	if ( WEXITSTATUS(a) != 0 ) {
-		printf("\r\n업로드 폴더 권한을 변경하는데 실패하였습니다.\r\n");
-		return false;
+	int fd = open(dir, O_RDONLY | O_NOFOLLOW);
+	if ( fd >= 0 ) {
+		fchmod(fd, 0700);		// umask 가 x 를 지웠어도 들어갈 수 있게
+		close(fd);
 	}
-
 	return true;
 }
 
@@ -1409,10 +1447,14 @@ void sweep_stale_tmp(void)
 void add_user_tmpfile(char *path)
 {
 	char buf[1024];
-	sprintf(buf, "%s/tmp/%s.file", getenv("HANULSO"), tty);
+	snprintf(buf, sizeof(buf), "%s/tmp/%s.file", getenv("HANULSO"), tty);
 
-	FILE *fp = fopen(buf, "a");
-	if ( fp == NULL ) return;
+	// 주인만 읽고 쓰게 (예전에는 umask 0111 때문에 0666 이라 남이 지울 경로를 끼워 넣을 수 있었다)
+	int fd = open(buf, O_WRONLY | O_CREAT | O_APPEND | O_NOFOLLOW, 0600);
+	if ( fd < 0 ) return;
+	fchmod(fd, 0600);
+	FILE *fp = fdopen(fd, "a");
+	if ( fp == NULL ) { close(fd); return; }
 	fprintf(fp, "%s\r\n", path);
 	fclose(fp);
 }
@@ -1448,8 +1490,13 @@ void del_user_tmpfiles(void)
 	char buf[1024];
 
 	std::vector<std::string> files = user_tmpfiles();
+	std::string tmp_root = std::string(getenv("HANULSO")) + "/tmp/";
 	for(unsigned int i=0; i<files.size(); i++) {
 		struct stat st;
+		// $HANULSO/tmp 아래의 것만 (목록에 다른 경로가 끼어 있어도 지우지 않는다)
+		if ( files[i].compare(0, tmp_root.size(), tmp_root) != 0 || files[i].find("..") != std::string::npos ) {
+			continue;
+		}
 		// lstat: 다운로드용 심볼릭 링크는 가리키는 파일이 없어도 지워야 하므로
 		if ( files[i].empty() || lstat(files[i].c_str(), &st) != 0 ) {
 			continue;
@@ -1468,9 +1515,8 @@ void del_user_tmpfiles(void)
 			sprintf(buf, "%s/*", dir.c_str());
 
 			std::vector<std::string> files = find_files_time_sorted(buf);
-			if (files.size() == 0) {
-				sprintf(buf, "rm -rf \"%s\"", dir.c_str());
-				system(buf);
+			if (files.size() == 0 && dir + "/" != tmp_root && dir.compare(0, tmp_root.size(), tmp_root) == 0) {
+				rmdir(dir.c_str());		// 빈 폴더만 (셸을 거치지 않는다)
 			}
 		}
 	}
@@ -1820,11 +1866,15 @@ int check_password_strongness(std::string str)
 
 std::string html2text(std::string html)
 {
-	char tmp_file[1024];
-	sprintf(tmp_file, "%s", tempnam("/tmp", "html"));
-
+	std::string hp = make_private_tmpfile("html");
+	std::string pp = make_private_tmpfile("html_out");
+	if ( hp.empty() || pp.empty() ) {
+		if ( !hp.empty() ) unlink(hp.c_str());
+		if ( !pp.empty() ) unlink(pp.c_str());
+		return "";
+	}
 	char html_file[1024];
-	sprintf(html_file, "%s.html", tmp_file);
+	snprintf(html_file, sizeof(html_file), "%s", hp.c_str());
 
 	FILE *fp = fopen(html_file, "w");
 	if ( fp == NULL ) return "";
@@ -1832,7 +1882,7 @@ std::string html2text(std::string html)
 	fclose(fp);
 
 	char plain_file[1024];
-	sprintf(plain_file, "%s.out", html_file);
+	snprintf(plain_file, sizeof(plain_file), "%s", pp.c_str());
 
 	char buf[1024];
 	snprintf(buf, sizeof(buf), "lynx -dump -nomargins -assume_charset=euc-kr -display_charset=euc-kr %s"

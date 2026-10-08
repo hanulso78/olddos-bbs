@@ -204,6 +204,27 @@ static pugi::xml_node board_node(const std::string &table)
 	return pugi::xml_node();
 }
 
+// 메뉴에서 그 게시판이 운영자만 글을 쓰는 곳인지 (답글 RE 도 막는다)
+bool board_sysop_only(const char *table)
+{
+	std::vector<pugi::xml_node> all;
+	if ( !menu_root ) return false;
+	// 등급과 상관없이 모든 게시판에서 찾는다
+	std::vector<pugi::xml_node> stack(1, menu_root);
+	while ( !stack.empty() ) {
+		pugi::xml_node n = stack.back();
+		stack.pop_back();
+		for ( pugi::xml_node c = n.first_child(); c; c = c.next_sibling() ) {
+			if ( c.type() != pugi::node_element ) continue;
+			if ( !strcmp(c.attribute("type").value(), "board") && !strcmp(c.attribute("id").value(), table) ) {
+				return !strcasecmp(c.child_value("write_sysop_only"), "yes");
+			}
+			stack.push_back(c);
+		}
+	}
+	return false;
+}
+
 static std::string board_name(pugi::xml_node n)
 {
 	std::string s = trim(n.child_value("name"));

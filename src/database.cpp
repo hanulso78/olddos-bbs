@@ -544,7 +544,7 @@ namespace database {
 		char query[9072];
 
 		snprintf(query, sizeof(query), "SELECT COUNT(*) FROM %s "
-				"WHERE USER_ID LIKE '%%%s%%';", table_name, escape(user_id).c_str());
+				"WHERE USER_ID = '%s';", table_name, escape(user_id).c_str());
 		if ( mysql_query(mysql, query) != 0 ) {
 			printf("\r\n(%d) [%s] \"%s\"\r\n", mysql_errno(mysql), mysql_sqlstate(mysql), mysql_error(mysql));
 			press_enter();
@@ -685,12 +685,9 @@ namespace database {
 
 	bool exist_user_id(char *id) 
 	{
-		char *buf2 = (char*)malloc(strlen(id)*2+1);
-		mysql_real_escape_string(mysql, buf2, id, strlen(id));
-
+		// 길이를 넘기지 않게 (예전에는 이스케이프한 아이디를 1024 바이트 칸에 sprintf)
 		char buf[1024];
-		sprintf(buf, "SELECT * FROM member WHERE USER_ID='%s';", buf2);
-		free(buf2);
+		snprintf(buf, sizeof(buf), "SELECT * FROM member WHERE USER_ID='%s';", escape(id).c_str());
 
 		std::vector<std::map<std::string, std::string> > rows = fetch_rows(buf);
 		if ( rows.size() > 0 ) {

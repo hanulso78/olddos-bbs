@@ -287,6 +287,9 @@ std::string query_luck(int yy, int mm, int dd, int sex, int birth_yy, int birth_
 
 // ----------------------------------------------------------------
 std::string html2text(std::string html);
+std::string make_private_tmpfile(const char *prefix);
+std::string safe_terminal_text(const std::string &s);
+bool board_sysop_only(const char *table);
 void print_file(const char *filename);
 void print_file_page(const char *filename);
 std::string read_file(const char *path);

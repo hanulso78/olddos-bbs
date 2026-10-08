@@ -93,10 +93,36 @@ static bool write_curl_cfg(const std::string &path, bool with_cookie)
 }
 
 // url 을 path 에 받는다. HTTP 상태 코드를 돌려준다 (실패하면 0)
+// 받아도 되는 주소: http(s) 이고 호스트가 pstatic.net / naver.com (또는 그 아래)
+// 예전에는 주소 어딘가에 "pstatic.net" 만 있으면 받아, file:///...hanulso.cfg?pstatic.net 같은 그림 주소로
+// 서버 파일 (DB / 메일 비밀번호) 이 첨부로 올라갈 수 있었다
+static bool allowed_url(const std::string &url)
+{
+	std::string u = url;
+	std::string::size_type p;
+	if ( u.compare(0, 8, "https://") == 0 ) p = 8;
+	else if ( u.compare(0, 7, "http://") == 0 ) p = 7;
+	else return false;
+	std::string::size_type e = u.find_first_of("/?#", p);
+	std::string host = u.substr(p, e == std::string::npos ? std::string::npos : e - p);
+	if ( host.find('@') != std::string::npos ) return false;		// user@host
+	std::string::size_type c = host.find(':');
+	if ( c != std::string::npos ) host = host.substr(0, c);
+	for ( unsigned int i = 0; i < host.size(); i++ ) host[i] = tolower((unsigned char)host[i]);
+	static const char *ok[] = { "pstatic.net", "naver.com", "naver.net", NULL };
+	for ( int i = 0; ok[i]; i++ ) {
+		std::string d = ok[i];
+		if ( host == d ) return true;
+		if ( host.size() > d.size() && host.compare(host.size() - d.size() - 1, d.size() + 1, "." + d) == 0 ) return true;
+	}
+	return false;
+}
+
 static int http_get(const std::string &url, const std::string &path, bool with_cookie)
 {
 	keep_alive();
-	std::string cmd = "curl -K " + shell_quote(with_cookie ? curl_cfg_cookie : curl_cfg_plain)
+	if ( !allowed_url(url) ) return 0;
+	std::string cmd = "curl --proto =http,https --proto-redir =http,https -K " + shell_quote(with_cookie ? curl_cfg_cookie : curl_cfg_plain)
 		+ " -o " + shell_quote(path) + " -w '%{http_code}' " + shell_quote(url);
 	bool ok;
 	std::vector<std::string> lines = exec_command((char*)cmd.c_str(), &ok);
