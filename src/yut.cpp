@@ -26,6 +26,9 @@ static std::string user_nick;
 #define Y_GR	"\033[=10F"
 #define Y_M		"\033[=13F"
 #define BG_OFF	"\033[=1G"
+// 말: 배경을 칠해 한눈에 구분한다. 나 = 나무색 바탕에 노란 글자, 컴퓨터 = 빨간 바탕에 흰 글자
+#define MINE_C	"\033[=6G\033[=14F"
+#define COM_C	"\033[=4G\033[=15F"
 
 void raw_mode(void)
 {
@@ -220,7 +223,7 @@ static void draw_board(void)
 {
 	std::string cell[BH][BW];
 	std::string color[BH][BW];
-	for ( int r = 0; r < BH; r++ ) for ( int c = 0; c < BW; c++ ) { cell[r][c] = " "; color[r][c] = Y_DG; }
+	for ( int r = 0; r < BH; r++ ) for ( int c = 0; c < BW; c++ ) { cell[r][c] = " "; color[r][c] = BG_OFF Y_DG; }
 	// 바깥 선
 	for ( int c = 0; c <= 35; c++ ) { cell[0][c] = "-"; cell[15][c] = "-"; }
 	for ( int r = 0; r <= 15; r++ ) { cell[r][0] = "|"; cell[r][35] = "|"; }
@@ -237,18 +240,18 @@ static void draw_board(void)
 		int r = node_row(n), c = node_col(n);
 		bool big = (n == 0 || n == 5 || n == 10 || n == 15 || n == CENTER);
 		std::string s = big ? "◎" : "○";
-		std::string col = big ? Y_W : Y_G;
+		std::string col = big ? BG_OFF Y_W : BG_OFF Y_G;
 		int mine = count_at(0, n), com = count_at(1, n);
 		if ( mine > 0 ) {
 			int k = std::find(g.begin(), g.end(), n) - g.begin();
 			char b[4];
 			snprintf(b, sizeof(b), "%c%c", 'A' + k, mine > 1 ? '0' + mine : ' ');
 			s = b;
-			col = Y_Y;
+			col = MINE_C;
 		} else if ( com > 0 ) {
 			static const char *circ[5] = { "", "◆", "②", "③", "④" };
 			s = circ[com];
-			col = Y_R;
+			col = COM_C;
 		}
 		cell[r][c] = s;
 		color[r][c] = col;
@@ -262,8 +265,9 @@ static void draw_board(void)
 			if ( color[r][c] != cur ) { printf("%s", color[r][c].c_str()); cur = color[r][c].c_str(); }
 			printf("%s", cell[r][c].c_str());
 		}
+		printf(BG_OFF);
 	}
-	printf(Y_W);
+	printf(BG_OFF Y_W);
 	// 자리 이름
 	at(BR + 16, BC + 33); printf(Y_G "참먹이" Y_W);
 	at(BR - 1, BC + 34); printf(Y_G "모" Y_W);
@@ -280,17 +284,20 @@ static void draw_stick(int i, int flat)
 	for ( int r = 0; r < 7; r++ ) {
 		at(SR + r, c);
 		if ( flat ) {
-			printf("\033[=6G\033[=0F");
+			// 배 (평평한 면): 밝은 회색 바탕에 칼자국
+			printf("\033[=7G\033[=4F");
 			// 한 줄 4 칸: 완성형 기호는 2 칸이라 두 개까지
-			if ( i == 3 && r == 3 ) printf("\033[=12F◆\033[=0F  ");	// 빽도 표시
+			if ( i == 3 && r == 3 ) printf("\033[=0F◆\033[=4F  ");	// 빽도 표시
 			else if ( r == 1 || r == 3 || r == 5 ) printf("××");
 			else printf("    ");
 		} else {
-			// 등 (둥근 면): 어두운 나무결
-			printf("\033[=0G\033[=8F");
-			printf(r == 0 || r == 6 ? "    " : "▒▒");
+			// 등 (둥근 면): 붉은 나무결, 양 끝은 둥글게 비운다
+			if ( r == 0 || r == 6 ) printf(BG_OFF "    ");
+			else printf("\033[=4G\033[=12F▒▒");
 		}
 	}
+	at(SR - 1, c);
+	printf(BG_OFF "%s", flat ? Y_W " 배 " : Y_DG " 등 ");
 	printf(BG_OFF Y_W);
 }
 
@@ -315,7 +322,8 @@ static void draw_panel(void)
 		int wait = count_at(t, WAIT), done = count_at(t, DONE);
 		at(14 + t, 46);
 		printf("\033[K%s%-6s" Y_W "대기 ", t == 0 ? Y_Y : Y_R, t == 0 ? "나" : "컴퓨터");
-		for ( int i = 0; i < 4; i++ ) printf("%s", i < wait ? (t == 0 ? Y_Y "○" : Y_R "○") : "  ");
+		// 기다리는 말도 판 위의 말과 같은 모양으로 (누가 어느 색인지 바로 보이게)
+		for ( int i = 0; i < 4; i++ ) printf("%s", i < wait ? (t == 0 ? MINE_C "○" BG_OFF : COM_C "◆" BG_OFF) : "  ");
 		printf(Y_W " 난 말 ");
 		for ( int i = 0; i < 4; i++ ) printf("%s", i < done ? (t == 0 ? Y_Y "●" : Y_R "●") : Y_DG "·");
 		printf(Y_W);
