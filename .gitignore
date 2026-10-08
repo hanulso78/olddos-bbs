@@ -29,3 +29,6 @@ src/pico/pico/osdep/includer
 
 # 프로그램이 받아 모으는 자료 (오늘의 영어 문장 등)
 data/
+
+# 운영자 메뉴의 DB 백업 (회원 정보가 들어 있다)
+backup/

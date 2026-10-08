@@ -1,4 +1,5 @@
 #include "main.h"
+#include <sys/wait.h>
 
 // ------------------------------------------------------------------
 // 운영자 메뉴 (SYSOP)
@@ -1360,6 +1361,128 @@ static void cafe_menu(void)
 	}
 }
 
+// ------------------------------------------------------------------
+// DB 백업: $HANULSO/backup/bbs-YYYYMMDD-HHMM.sql.gz (mysqldump | gzip)
+//   표는 latin1 에 완성형 바이트를 넣어 두므로 latin1 로 받아 바이트를 그대로 둔다.
+//   비밀번호는 명령줄에 드러나지 않게 임시 설정 파일 (--defaults-extra-file) 로 넘긴다.
+//   받는 동안은 뒤에서 돌리고 크기를 보여 주며, 자동 끊기에 걸리지 않게 한다.
+// ------------------------------------------------------------------
+static std::string backup_dir(void)
+{
+	return hanulso() + "/backup";
+}
+
+static long file_bytes(const std::string &path)
+{
+	struct stat st;
+	return stat(path.c_str(), &st) == 0 ? (long)st.st_size : -1;
+}
+
+static std::vector<std::string> backup_files(void)
+{
+	std::vector<std::string> f = find_files((char*)(backup_dir() + "/bbs-*.sql.gz").c_str());
+	std::sort(f.rbegin(), f.rend());		// 새것 먼저 (이름이 날짜순)
+	return f;
+}
+
+static bool run_backup(std::string &out_path, std::string &err)
+{
+	mkdir(backup_dir().c_str(), 0700);
+	chmod(backup_dir().c_str(), 0700);		// 회원 정보가 들어 있으니 BBS 계정만
+
+	char stamp[32];
+	time_t t = time(NULL);
+	strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", localtime(&t));
+	out_path = backup_dir() + "/bbs-" + stamp + ".sql.gz";
+	std::string tmp = out_path + ".part";
+
+	char conf[] = "/tmp/sysop_my.XXXXXX";
+	int fd = mkstemp(conf);
+	if ( fd < 0 ) { err = "임시 파일을 만들지 못했습니다"; return false; }
+	std::string c = std::string("[client]\nuser=") + db_user + "\npassword=\"" + db_passwd + "\"\nhost=" + db_host + "\n";
+	write(fd, c.data(), c.size());
+	close(fd);
+
+	std::string cmd = "set -o pipefail; mysqldump --defaults-extra-file=" + std::string(conf) +
+		" --single-transaction --quick --default-character-set=latin1 " + shell_quote(db_name) +
+		" 2>" + shell_quote(tmp + ".err") + " | gzip > " + shell_quote(tmp);
+
+	pid_t pid = fork();
+	if ( pid == 0 ) {
+		umask(0077);
+		execl("/bin/bash", "bash", "-c", cmd.c_str(), (char*)0);
+		_exit(127);
+	}
+	int status = -1;
+	long last = -1;
+	time_t started = time(NULL);
+	while ( pid > 0 ) {
+		pid_t r = waitpid(pid, &status, WNOHANG);
+		if ( r == pid ) break;
+		if ( r < 0 ) { status = -1; break; }
+		keep_alive();
+		long b = file_bytes(tmp);
+		if ( b != last ) {
+			printf("\r  " S_GRAY "받는 중... %s (%ld 초)" S_WHITE "\033[K", human(b < 0 ? 0 : b).c_str(), (long)(time(NULL) - started));
+			fflush(stdout);
+			last = b;
+		}
+		usleep(500000);
+	}
+	unlink(conf);
+	printf("\r\033[K");
+
+	std::string e = trim(read_file((tmp + ".err").c_str()));
+	unlink((tmp + ".err").c_str());
+	if ( pid <= 0 || !WIFEXITED(status) || WEXITSTATUS(status) != 0 || file_bytes(tmp) <= 0 ) {
+		unlink(tmp.c_str());
+		err = e.empty() ? "mysqldump 가 실패했습니다" : string_truncate(e, 70, "");
+		return false;
+	}
+	rename(tmp.c_str(), out_path.c_str());
+	chmod(out_path.c_str(), 0600);
+	return true;
+}
+
+static void backup_menu(void)
+{
+	while ( 1 ) {
+		print_header(S_CYAN "운영자 - DB 백업" S_WHITE);
+		std::vector<std::string> files = backup_files();
+		printf("\r\n  " S_GRAY "DB (%s) 전체를 backup/ 에 받습니다. 첨부 파일 (file/) 은 들어가지 않습니다." S_WHITE "\r\n\r\n", db_name);
+		printf("  " S_GRAY "%3s  %-30s %10s" S_WHITE "\r\n", "", "파일", "크기");
+		if ( files.empty() ) printf("  " S_GRAY "     아직 백업이 없습니다." S_WHITE "\r\n");
+		long total = 0;
+		for ( unsigned int i = 0; i < files.size(); i++ ) {
+			long b = file_bytes(files[i]);
+			total += b > 0 ? b : 0;
+			if ( i < 10 ) printf("  %3d  %-30s %10s\r\n", i + 1, split_file_name(files[i]).c_str(), human(b).c_str());
+		}
+		if ( files.size() > 10 ) printf("  " S_GRAY "     ... 그 밖에 %d 개" S_WHITE "\r\n", (int)files.size() - 10);
+		if ( !files.empty() ) printf("  " S_GRAY "     모두 %d 개, %s" S_WHITE "\r\n", (int)files.size(), human(total).c_str());
+		printf("\r\n  " S_GRAY "되살리기 (서버에서): gunzip < backup/파일 | mysql -u 아이디 -p %s" S_WHITE "\r\n", db_name);
+
+		std::string c = ask("B: 지금 백업  D 번호: 지우기  Enter: 돌아가기 >> ", 6);
+		if ( c.empty() ) return;
+		if ( !strcasecmp(c.c_str(), "b") ) {
+			if ( !confirm("지금 DB 를 백업할까요?") ) continue;
+			printf("\r\n");
+			std::string path, err;
+			if ( run_backup(path, err) ) {
+				msg(S_GREEN, "백업했습니다: " + split_file_name(path) + " (" + human(file_bytes(path)) + ")");
+			} else {
+				msg(S_RED, "백업하지 못했습니다: " + err);
+			}
+			wait_enter();
+		} else if ( toupper(c[0]) == 'D' ) {
+			int k = atoi(trim(c.substr(1)).c_str());
+			if ( k >= 1 && k <= (int)files.size() && confirm(split_file_name(files[k - 1]) + " 을 지울까요?") ) {
+				unlink(files[k - 1].c_str());
+			}
+		}
+	}
+}
+
 static void main_menu(void)
 {
 	while ( 1 ) {
@@ -1380,6 +1503,11 @@ static void main_menu(void)
 		printf("      12. 투표 마감 / 지우기           14. 네이버 카페 글 가져오기\r\n");
 		printf("  " S_YELLOW "◆ 서버" S_WHITE "\r\n");
 		printf("      13. 정리와 점검 " S_GRAY "(디스크, 임시 파일, 주인 없는 첨부, AI 사용량)" S_WHITE "\r\n");
+		{
+			std::vector<std::string> bf = backup_files();
+			std::string last = bf.empty() ? "아직 없음" : split_file_name(bf[0]).substr(4, 13);
+			printf("      16. DB 백업 " S_GRAY "(마지막: %s)" S_WHITE "\r\n", last.c_str());
+		}
 
 		std::string c = ask("번호 (끝내기: X) >> ", 3);
 		if ( !strcasecmp(c.c_str(), "x") || !strcasecmp(c.c_str(), "p") || !strcasecmp(c.c_str(), "q") ) return;
@@ -1399,6 +1527,7 @@ static void main_menu(void)
 		case 13: maintenance(); break;
 		case 14: cafe_menu(); break;
 		case 15: rename_member(); break;
+		case 16: backup_menu(); break;
 		}
 	}
 }
