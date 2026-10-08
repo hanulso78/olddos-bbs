@@ -1444,6 +1444,47 @@ static bool run_backup(std::string &out_path, std::string &err)
 	return true;
 }
 
+// 백업 파일을 회원 쪽으로 보낸다 (자료실 받기와 같은 프로토콜). 임시 폴더에 본래 이름으로 링크를 걸고 보낸다
+static int ask_send_protocol(void)
+{
+	std::string c = ask("보낼 프로토콜 (1:Xmodem 2:Ymodem 3:Zmodem 4:Kermit, Enter:Zmodem) >> ", 1);
+	if ( c.empty() ) return 3;
+	int p = atoi(c.c_str());
+	return (p >= 1 && p <= 4) ? p : 0;
+}
+
+static bool send_backup(const std::string &path, int protocol)
+{
+	std::string name = split_file_name(path);
+	char dir[1024];
+	snprintf(dir, sizeof(dir), "%s/tmp/sysopdl.XXXXXX", hanulso().c_str());
+	if ( mkdtemp(dir) == NULL ) return false;
+	std::string link_path = std::string(dir) + "/" + name;
+	if ( symlink(path.c_str(), link_path.c_str()) != 0 ) { rmdir(dir); return false; }
+
+	std::string q = shell_quote("./" + name);
+	std::string cmd;
+	if ( protocol == 1 ) cmd = "sz --xmodem -e " + q;
+	else if ( protocol == 2 ) cmd = "sz --ymodem -e " + q;
+	else if ( protocol == 4 ) {
+		char k[1024];
+		snprintf(k, sizeof(k), KERMIT_PROG " -i -s %s", getenv("HANULSO"), q.c_str());
+		cmd = k;
+	}
+	else cmd = "sz --zmodem -e " + q;
+
+	printf("\r\n  %s (%s) 를 보냅니다. 받기를 시작하세요.\r\n", name.c_str(), human(file_bytes(path)).c_str());
+	fflush(stdout);
+	chdir(dir);
+	ioctl(0, TCSETAF, &sys_term);
+	int a = system(cmd.c_str());
+	raw_mode();
+	chdir(hanulso().c_str());
+	unlink(link_path.c_str());
+	rmdir(dir);
+	return WIFEXITED(a) && WEXITSTATUS(a) == 0;
+}
+
 static void backup_menu(void)
 {
 	while ( 1 ) {
@@ -1462,7 +1503,7 @@ static void backup_menu(void)
 		if ( !files.empty() ) printf("  " S_GRAY "     모두 %d 개, %s" S_WHITE "\r\n", (int)files.size(), human(total).c_str());
 		printf("\r\n  " S_GRAY "되살리기 (서버에서): gunzip < backup/파일 | mysql -u 아이디 -p %s" S_WHITE "\r\n", db_name);
 
-		std::string c = ask("B: 지금 백업  D 번호: 지우기  Enter: 돌아가기 >> ", 6);
+		std::string c = ask("B: 지금 백업  R 번호: 내려받기  D 번호: 지우기  Enter >> ", 6);
 		if ( c.empty() ) return;
 		if ( !strcasecmp(c.c_str(), "b") ) {
 			if ( !confirm("지금 DB 를 백업할까요?") ) continue;
@@ -1473,6 +1514,18 @@ static void backup_menu(void)
 			} else {
 				msg(S_RED, "백업하지 못했습니다: " + err);
 			}
+			wait_enter();
+		} else if ( toupper(c[0]) == 'R' ) {
+			int k = atoi(trim(c.substr(1)).c_str());
+			if ( k < 1 || k > (int)files.size() ) {
+				if ( files.empty() ) continue;
+				k = atoi(ask("내려받을 번호 >> ", 3).c_str());
+				if ( k < 1 || k > (int)files.size() ) continue;
+			}
+			int protocol = ask_send_protocol();
+			if ( protocol == 0 ) continue;
+			if ( send_backup(files[k - 1], protocol) ) msg(S_GREEN, "보냈습니다.");
+			else msg(S_RED, "보내지 못했습니다.");
 			wait_enter();
 		} else if ( toupper(c[0]) == 'D' ) {
 			int k = atoi(trim(c.substr(1)).c_str());
