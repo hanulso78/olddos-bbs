@@ -292,6 +292,7 @@ int main(int argc, char **argv)
 
 	// 꼬리말 테이블, 새 글/검색에서 쓸 메뉴 뿌리
 	comments_init();
+	scrap_init();
 	subscribe_init();
 	poll_init();
 	menu_root = doc.document_element();
@@ -1480,6 +1481,11 @@ void show_article(char *table_name, int board_page_count, int board_page_no,
 				}
 			}
 
+			// 스크랩 담기 / 빼기 (MY S 로 모아 보기)
+			if ( !strcasecmp(args[0].c_str(), "sc") ) {
+				scrap_toggle(table_name, no);
+			}
+
 			// 꼬리말 지우기 (CD 번호)
 			if ( !strcasecmp(args[0].c_str(), "cd") ) {
 				if ( args.size() > 1 && is_number(args[1]) ) {
@@ -1791,7 +1797,7 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 		} else if ( !strcasecmp(args[0].c_str(), "best") ) {
 			show_best(args.size() > 1 ? args[1] : "");
 
-		// 내 글 (MY), 꼬리말 단 글 (MY C)
+		// 내 글 (MY), 꼬리말 단 글 (MY C), 스크랩 (MY S)
 		} else if ( !strcasecmp(args[0].c_str(), "my") ) {
 			show_my(args.size() > 1 ? args[1] : "");
 

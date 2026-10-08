@@ -206,6 +206,8 @@ void show_new_articles(void);
 void search_all_boards(std::string word);
 void show_best(std::string arg);
 void show_my(std::string arg);
+void scrap_init(void);
+void scrap_toggle(const char *table, int no);
 // 게시판 구독: 들어가 있는 게시판 (board_scope 가 들어갈 때 정하고 나올 때 되돌린다)
 extern std::string current_board;
 struct board_scope {

@@ -283,8 +283,9 @@ static void list_header(const std::string &head, const std::string &right)
 	printf("\033[4;1H");
 }
 
+// on_remove: 있으면 목록에서 "D 번호" 로 뺄 수 있다 (스크랩). 뺐으면 true
 static void article_list(const std::string &head, const std::string &empty_msg, std::vector<found_article> &list,
-		const std::string &col_label = "날짜")
+		const std::string &col_label = "날짜", bool (*on_remove)(const found_article &) = NULL)
 {
 	unsigned int page = 0;
 	const unsigned int per = 15;
@@ -313,9 +314,15 @@ static void article_list(const std::string &head, const std::string &empty_msg, 
 
 		char cmd[32];
 		printf(ESC_ENG);
-		printf("읽기(번호) 다음(Enter/N) 이전(B) 나가기(P) >> ");
+		printf(on_remove ? "읽기(번호) 빼기(D 번호) 다음(Enter/N) 이전(B) 나가기(P) >> " :
+				"읽기(번호) 다음(Enter/N) 이전(B) 나가기(P) >> ");
 		line_input(cmd, 10);
 		std::string c = trim(cmd);
+		if ( on_remove && c.size() > 1 && (c[0] == 'd' || c[0] == 'D') ) {
+			int n = atoi(trim(c.substr(1)).c_str());
+			if ( n >= 1 && n <= (int)list.size() && on_remove(list[n - 1]) ) list.erase(list.begin() + (n - 1));
+			continue;
+		}
 		if ( !strcasecmp(c.c_str(), "p") || !strcasecmp(c.c_str(), "q") || !strcasecmp(c.c_str(), "x") ) return;
 		if ( c.empty() || !strcasecmp(c.c_str(), "n") ) {
 			if ( page + 1 < pages ) page++;
@@ -434,12 +441,83 @@ static void mark_new_comments(std::vector<found_article> &list)
 	}
 }
 
-// MY : 내가 쓴 글,  MY C : 내가 꼬리말을 단 글
+// ------------------------------------------------------------------
+// 스크랩 : 글 보기에서 SC 로 담기 / 빼기, MY S 로 모아 보기
+// ------------------------------------------------------------------
+void scrap_init(void)
+{
+	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS scrap ( "
+			"USER_ID VARCHAR(50) NOT NULL, "
+			"BOARD VARCHAR(64) NOT NULL, "
+			"ARTICLE INT NOT NULL, "
+			"DATE_TIME DATETIME NOT NULL, "
+			"PRIMARY KEY (USER_ID, BOARD, ARTICLE) )");
+}
+
+static std::string scrap_where(const std::string &table, int no)
+{
+	return "USER_ID='" + database::escape(login_user_id) + "' AND BOARD='" + database::escape(table.c_str()) +
+		"' AND ARTICLE=" + TO_STRING(no);
+}
+
+// 글 보기의 SC: 스크랩에 없으면 담고, 있으면 뺀다
+void scrap_toggle(const char *table, int no)
+{
+	bool ok;
+	std::string w = scrap_where(table, no);
+	int have = atoi(database::fetch((char*)("SELECT COUNT(*) FROM scrap WHERE " + w).c_str(), &ok).c_str());
+	if ( have > 0 ) {
+		mysql_query(mysql, ("DELETE FROM scrap WHERE " + w).c_str());
+		printf("\r\n" X_C "스크랩에서 뺐습니다." X_W);
+	} else {
+		std::string q = "INSERT IGNORE INTO scrap (USER_ID, BOARD, ARTICLE, DATE_TIME) VALUES ('" +
+			database::escape(login_user_id) + "', '" + database::escape(table) + "', " + TO_STRING(no) + ", NOW())";
+		mysql_query(mysql, q.c_str());
+		printf("\r\n" X_Y "스크랩했습니다." X_W " MY S 로 모아 볼 수 있습니다. (다시 SC 면 뺍니다)");
+	}
+	printf("\r\n[Enter] 를 누르세요.");
+	press_enter();
+}
+
+static bool scrap_remove(const found_article &a)
+{
+	mysql_query(mysql, ("DELETE FROM scrap WHERE " + scrap_where(a.table, a.no)).c_str());
+	return true;
+}
+
+static void show_scraps(void)
+{
+	std::vector<found_article> list;
+	std::string q = "SELECT BOARD, ARTICLE FROM scrap WHERE USER_ID='" + database::escape(login_user_id) +
+		"' ORDER BY DATE_TIME DESC LIMIT 200";
+	std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)q.c_str());
+	for ( unsigned int i = 0; i < r.size(); i++ ) {
+		pugi::xml_node node = board_node(r[i]["BOARD"]);
+		if ( !node ) continue;		// 이제 들어갈 수 없는 게시판
+		int no = atoi(r[i]["ARTICLE"].c_str());
+		std::string q2 = "SELECT NO, USER_ID, DATE_TIME, TITLE, HIT, RECOMMEND FROM " + r[i]["BOARD"] + " WHERE NO=" + TO_STRING(no);
+		std::vector<std::map<std::string, std::string> > a = database::fetch_rows((char*)q2.c_str());
+		if ( a.empty() ) {
+			// 지워진 글은 스크랩에서도 뺀다
+			mysql_query(mysql, ("DELETE FROM scrap WHERE " + scrap_where(r[i]["BOARD"], no)).c_str());
+			continue;
+		}
+		list.push_back(to_found(r[i]["BOARD"], node, a[0]));
+	}
+	article_list("스크랩한 글 (글 보기에서 SC 로 담기)", "스크랩한 글이 없습니다. 글 보기에서 SC 로 담으세요.", list,
+			"날짜", scrap_remove);
+}
+
+// MY : 내가 쓴 글,  MY C : 내가 꼬리말을 단 글,  MY S : 스크랩한 글
 void show_my(std::string arg)
 {
 	std::vector<found_article> list;
 	printf("\r\n모으는 중입니다...");
 	fflush(stdout);
+	if ( !strcasecmp(trim(arg).c_str(), "s") ) {
+		show_scraps();
+		return;
+	}
 	if ( !strcasecmp(trim(arg).c_str(), "c") ) {
 		std::string q = "SELECT BOARD, ARTICLE, MAX(NO) AS LAST FROM comments WHERE USER_ID='" +
 			database::escape(login_user_id) + "' GROUP BY BOARD, ARTICLE ORDER BY LAST DESC LIMIT 60";
@@ -453,13 +531,13 @@ void show_my(std::string arg)
 			if ( a.size() > 0 ) list.push_back(to_found(r[i]["BOARD"], node, a[0]));
 		}
 		mark_new_comments(list);
-		article_list("내가 꼬리말을 단 글 (◆ 새 꼬리말, MY: 내 글)", "꼬리말을 단 글이 없습니다.", list);
+		article_list("내가 꼬리말을 단 글 (◆ 새 꼬리말, MY: 내 글, MY S: 스크랩)", "꼬리말을 단 글이 없습니다.", list);
 		return;
 	}
 	list = collect("USER_ID='" + database::escape(login_user_id) + "'", 50);
 	if ( list.size() > 100 ) list.resize(100);
 	mark_new_comments(list);
-	article_list("내가 쓴 글 (◆ 새 꼬리말, MY C: 꼬리말 단 글)", "쓴 글이 없습니다.", list);
+	article_list("내가 쓴 글 (◆ 새 꼬리말, MY C: 꼬리말 단 글, MY S: 스크랩)", "쓴 글이 없습니다.", list);
 }
 
 // ------------------------------------------------------------------
