@@ -1385,7 +1385,7 @@ static std::vector<std::string> backup_files(void)
 	return f;
 }
 
-static bool run_backup(std::string &out_path, std::string &err)
+static bool run_backup(std::string &out_path, std::string &err, const std::string &table = "")
 {
 	mkdir(backup_dir().c_str(), 0700);
 	chmod(backup_dir().c_str(), 0700);		// 회원 정보가 들어 있으니 BBS 계정만
@@ -1393,7 +1393,7 @@ static bool run_backup(std::string &out_path, std::string &err)
 	char stamp[32];
 	time_t t = time(NULL);
 	strftime(stamp, sizeof(stamp), "%Y%m%d-%H%M%S", localtime(&t));
-	out_path = backup_dir() + "/bbs-" + stamp + ".sql.gz";
+	out_path = backup_dir() + (table.empty() ? "/bbs-" : "/drop-" + table + "-") + stamp + ".sql.gz";
 	std::string tmp = out_path + ".part";
 
 	char conf[] = "/tmp/sysop_my.XXXXXX";
@@ -1405,6 +1405,7 @@ static bool run_backup(std::string &out_path, std::string &err)
 
 	std::string cmd = "set -o pipefail; mysqldump --defaults-extra-file=" + std::string(conf) +
 		" --single-transaction --quick --default-character-set=latin1 " + shell_quote(db_name) +
+		(table.empty() ? "" : " " + shell_quote(table)) +
 		" 2>" + shell_quote(tmp + ".err") + " | gzip > " + shell_quote(tmp);
 
 	pid_t pid = fork();
@@ -1536,6 +1537,123 @@ static void backup_menu(void)
 	}
 }
 
+// ------------------------------------------------------------------
+// DB 테이블 정리: 소스 (src/) 와 메뉴 (*.mnu) 어디에도 이름이 나오지 않는 테이블을 찾아 지운다
+// ------------------------------------------------------------------
+struct table_info { std::string name, rows, bytes, updated; bool used; };
+
+// src/ 의 소스와 *.mnu 에 나오는 낱말 (테이블 이름 후보) 을 모은다. 읽지 못하면 false
+static bool used_words(std::set<std::string> &words)
+{
+	std::string home = shell_quote(hanulso());
+	std::string cmd = "cd " + home + " && { grep -rhoE '[A-Za-z_][A-Za-z0-9_]*' "
+		"--include='*.cpp' --include='*.c' --include='*.h' --include='*.py' --include='*.sh' src; "
+		"cat *.mnu | grep -oE '[A-Za-z_][A-Za-z0-9_]*'; } 2>/dev/null | sort -u";
+	FILE *fp = popen(cmd.c_str(), "r");
+	if ( !fp ) return false;
+	char buf[256];
+	while ( fgets(buf, sizeof(buf), fp) ) words.insert(trim(buf));
+	pclose(fp);
+	return words.size() > 500 && words.count("member");		// 소스를 제대로 읽었는지
+}
+
+static bool safe_table_name(const std::string &t)
+{
+	if ( t.empty() || t.size() > 64 ) return false;
+	for ( unsigned int i = 0; i < t.size(); i++ ) if ( !isalnum((unsigned char)t[i]) && t[i] != '_' ) return false;
+	return true;
+}
+
+static void drop_tables(void)
+{
+	bool all = false;
+	int page = 0;
+	while ( 1 ) {
+		std::set<std::string> words;
+		bool ok = used_words(words);
+		rows_t r = rows_of("SELECT TABLE_NAME AS N, IFNULL(TABLE_ROWS, 0) AS R, IFNULL(DATA_LENGTH + INDEX_LENGTH, 0) AS B, "
+			"IFNULL(DATE_FORMAT(IFNULL(UPDATE_TIME, CREATE_TIME), '%Y-%m-%d'), '') AS U "
+			"FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME");
+		std::vector<table_info> list;
+		int unused = 0;
+		for ( unsigned int i = 0; i < r.size(); i++ ) {
+			table_info t;
+			t.name = r[i]["N"];
+			t.rows = r[i]["R"];
+			t.bytes = human(atol(r[i]["B"].c_str()));
+			t.updated = r[i]["U"];
+			t.used = !ok || words.count(t.name);
+			if ( !t.used ) unused++;
+			if ( all || !t.used ) list.push_back(t);
+		}
+		const int PER = 13;
+		int pages = list.empty() ? 1 : ((int)list.size() + PER - 1) / PER;
+		if ( page >= pages ) page = pages - 1;
+		if ( page < 0 ) page = 0;
+
+		print_header(S_CYAN "운영자 - DB 테이블 정리" S_WHITE);
+		if ( ok ) {
+			printf("\r\n  " S_GRAY "테이블 %d 개 가운데 소스 (src/) 와 메뉴 (*.mnu) 에 이름이 없는 것: " S_YELLOW "%d" S_GRAY " 개" S_WHITE "\r\n",
+				(int)r.size(), unused);
+			printf("  " S_GRAY "지우기 전에 backup/ 에 받아 둡니다. 쓰는 테이블은 지울 수 없습니다." S_WHITE "\r\n\r\n");
+		} else {
+			printf("\r\n  " S_RED "src/ 를 읽지 못해 어떤 테이블을 쓰는지 알 수 없습니다. 지우기는 막아 둡니다." S_WHITE "\r\n\r\n\r\n");
+		}
+		printf("  " S_GRAY "%3s  %-34s %9s %9s  %-10s %s" S_WHITE "\r\n", "", "테이블", "행 (약)", "크기", "바뀐 날", "");
+		if ( list.empty() ) printf("  " S_GRAY "     %s" S_WHITE "\r\n", all ? "테이블이 없습니다." : "지울 만한 테이블이 없습니다. (A: 모두 보기)");
+		for ( int i = page * PER; i < (int)list.size() && i < (page + 1) * PER; i++ ) {
+			const table_info &t = list[i];
+			printf("  %3d  %s%-34s" S_WHITE " %9s %9s  %-10s %s\r\n", i + 1, t.used ? S_WHITE : S_YELLOW,
+				string_truncate(t.name, 34, "").c_str(), t.rows.c_str(), t.bytes.c_str(), t.updated.c_str(),
+				t.used ? "" : S_YELLOW "안 씀" S_WHITE);
+		}
+
+		std::string q = std::string("D 번호: 지우기  A: ") + (all ? "안 쓰는 것만" : "모두 보기");
+		if ( pages > 1 ) q += "  N/P: 쪽 (" + TO_STRING(page + 1) + "/" + TO_STRING(pages) + ")";
+		q += "  Enter >> ";
+		std::string c = ask(q.c_str(), 6);
+		if ( c.empty() ) return;
+		if ( !strcasecmp(c.c_str(), "a") ) { all = !all; page = 0; continue; }
+		if ( !strcasecmp(c.c_str(), "n") ) { page++; continue; }
+		if ( !strcasecmp(c.c_str(), "p") ) { page--; continue; }
+		if ( toupper(c[0]) != 'D' ) continue;
+
+		int k = atoi(trim(c.substr(1)).c_str());
+		if ( k < 1 || k > (int)list.size() ) {
+			if ( list.empty() ) continue;
+			k = atoi(ask("지울 번호 >> ", 3).c_str());
+			if ( k < 1 || k > (int)list.size() ) continue;
+		}
+		table_info t = list[k - 1];
+		if ( !ok ) { msg(S_RED, "src/ 를 읽지 못해 지울 수 없습니다."); wait_enter(); continue; }
+		if ( t.used ) { msg(S_RED, t.name + " 는 소스나 메뉴에서 쓰는 테이블이라 지울 수 없습니다."); wait_enter(); continue; }
+		if ( !safe_table_name(t.name) ) { msg(S_RED, "이름에 영문, 숫자, _ 가 아닌 글자가 있어 여기서는 지울 수 없습니다."); wait_enter(); continue; }
+
+		int count = query_int("SELECT COUNT(*) FROM `" + t.name + "`");
+		printf("\r\n  " S_YELLOW "%s" S_WHITE ": 행 %d 개, %s, 바뀐 날 %s\r\n", t.name.c_str(), count, t.bytes.c_str(), t.updated.c_str());
+		printf("  " S_RED "지운 테이블은 backup/ 에 받아 둔 파일로만 되살릴 수 있습니다." S_WHITE "\r\n");
+		std::string typed = ask("지우려면 테이블 이름을 그대로 치세요 (Enter: 취소) >> ", 64);
+		if ( typed != t.name ) { if ( !typed.empty() ) { msg(S_RED, "이름이 달라 지우지 않았습니다."); wait_enter(); } continue; }
+
+		printf("\r\n");
+		std::string path, err;
+		if ( !run_backup(path, err, t.name) ) {
+			msg(S_RED, "백업하지 못해 지우지 않았습니다: " + err);
+			wait_enter();
+			continue;
+		}
+		std::string dq = "DROP TABLE `" + t.name + "`";
+		if ( mysql_query(mysql, dq.c_str()) != 0 ) {
+			msg(S_RED, std::string("지우지 못했습니다: ") + mysql_error(mysql));
+		} else {
+			msg(S_GREEN, "지웠습니다. 받아 둔 파일 (" + human(file_bytes(path)) + "):");
+			printf("\r\n    backup/%s", split_file_name(path).c_str());
+			printf("\r\n  " S_GRAY "되살리기 (서버에서): gunzip < backup/위 파일 | mysql -u 아이디 -p %s" S_WHITE, db_name);
+		}
+		wait_enter();
+	}
+}
+
 static void main_menu(void)
 {
 	while ( 1 ) {
@@ -1561,6 +1679,7 @@ static void main_menu(void)
 			std::string last = bf.empty() ? "아직 없음" : split_file_name(bf[0]).substr(4, 13);
 			printf("      16. DB 백업 " S_GRAY "(마지막: %s)" S_WHITE "\r\n", last.c_str());
 		}
+		printf("      17. DB 테이블 정리 " S_GRAY "(쓰지 않는 테이블 지우기)" S_WHITE "\r\n");
 
 		std::string c = ask("번호 (끝내기: X) >> ", 3);
 		if ( !strcasecmp(c.c_str(), "x") || !strcasecmp(c.c_str(), "p") || !strcasecmp(c.c_str(), "q") ) return;
@@ -1581,6 +1700,7 @@ static void main_menu(void)
 		case 14: cafe_menu(); break;
 		case 15: rename_member(); break;
 		case 16: backup_menu(); break;
+		case 17: drop_tables(); break;
 		}
 	}
 }
