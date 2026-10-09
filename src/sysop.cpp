@@ -212,12 +212,13 @@ static void show_online(void)
 	while ( 1 ) {
 		std::vector<online_user> us = online_users();
 		print_header(S_CYAN "운영자 - 지금 접속자" S_WHITE);
-		printf("\r\n  " S_GRAY "%3s  %-24s %-10s %s" S_WHITE "\r\n", "", "이름 (아이디)", "노드", "접속한 지");
+		printf("\r\n  " S_GRAY "%3s  %-24s %-24s %-8s %s" S_WHITE "\r\n", "", "이름 (아이디)", "있는 곳", "노드", "접속한 지");
 		for ( unsigned int i = 0; i < us.size() && i < 15; i++ ) {
 			std::string name = string_truncate(nick_of(us[i].id), 12, "") + " (" + us[i].id + ")";
 			bool me = us[i].node == tty;
-			printf("  %s%3d  %-24s pts/%-6s %s%s" S_WHITE "\r\n", me ? S_YELLOW : S_WHITE, i + 1,
-					string_truncate(name, 24, "").c_str(), us[i].node.c_str(),
+			std::string where = display_text(trim(read_file((us[i].path.substr(0, us[i].path.size() - 4) + ".where").c_str())));
+			printf("  %s%3d  %-24s %-24s pts/%-4s %s%s" S_WHITE "\r\n", me ? S_YELLOW : S_WHITE, i + 1,
+					string_truncate(name, 24, "").c_str(), string_truncate(where.empty() ? "-" : where, 24, "").c_str(), us[i].node.c_str(),
 					ms_time_to_string(us[i].ms).substr(0, 8).c_str(), me ? "  (나)" : "");
 		}
 		if ( us.size() > 15 ) printf("  " S_GRAY "... 그 밖에 %d 명" S_WHITE "\r\n", (int)us.size() - 15);

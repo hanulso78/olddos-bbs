@@ -45,6 +45,7 @@
 		</item>
 
 		<item type="menu" text="txt/life_info.txt" go="life" door="6">
+			<name>생활정보 (life)</name>
 			<item type="weather" go="weather" door="1" access_level="1">
 				<name>날씨 정보 (weather)</name>
 				<header></header>
@@ -121,6 +122,7 @@
 		</item>
 
 		<item type="menu" text="txt/game_info.txt" go="game" door="7">
+			<name>게임 마당 (game)</name>
 			<item type="program" prog="hero" go="hero" door="1" access_level="1">
 				<name>용사의 전설 (hero)</name>
 			</item>
@@ -204,6 +206,7 @@
 
 		<!------------------------------------------------------------->
 		<item type="menu" text="txt/pds_prog.txt" go="prog" door="41">
+			<name>프로그램 자료 (prog)</name>
 			<item type="board" id="bbs_pds_prog_os" door="1" access_level="1">
 				<name>운영체제 자료실</name>
 				<attachment>yes</attachment>
@@ -343,6 +346,7 @@
 
 		<!------------------------------------------------------------->
 		<item type="menu" text="txt/pds_game.txt" go="game" door="42">
+			<name>게임 자료 (game)</name>
 			<item type="board" id="bbs_pds_game_adventure" door="1" access_level="1">
 				<name>어드벤처 게임 자료실</name>
 				<attachment>yes</attachment>
@@ -484,6 +488,7 @@
 		</item>
 
 		<item type="menu" text="txt/pds_special.txt" go="book" door="43">
+			<name>특별 자료 (book)</name>
 			<item type="board" id="bbs_pds_special_book_scan" door="1" access_level="2">
 				<name>고전 도서 스캔 자료실</name>
 				<attachment>yes</attachment>
@@ -494,6 +499,7 @@
 		</item>
 
 		<item type="menu" text="txt/pds_sound.txt" go="music" door="44">
+			<name>음원 자료 (music)</name>
 			<item type="board" id="bbs_sound_adlib_data" door="1" access_level="1">
 				<name>애드립 음원 자료실</name>
 				<attachment>yes</attachment>

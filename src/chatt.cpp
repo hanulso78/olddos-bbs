@@ -47,6 +47,7 @@ void show_chatt_rooms(pugi::xml_node node, bool *goto_top)
 
 	if ( database::create_chatt_room(table_name) == false )
 		return;
+	where_scope where(node_where(node));
 	
 	int offset = 0;
 

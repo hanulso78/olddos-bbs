@@ -220,6 +220,15 @@ struct board_scope {
 	~board_scope();
 };
 void subscribe_init(void);
+// 지금 있는 곳 (US 에 보인다): tmp/<tty>.where. where_scope 가 들어갈 때 적고 나올 때 되돌린다
+extern std::string current_where;
+struct where_scope {
+	std::string old;
+	where_scope(const std::string &where);
+	~where_scope();
+};
+std::string node_where(pugi::xml_node node);
+void show_online_users(void);
 void subscribe_command(void);
 void notify_subscribers(const char *table, int no);
 // 투표

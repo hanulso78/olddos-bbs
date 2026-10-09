@@ -117,6 +117,7 @@ void show_newspaper_board(pugi::xml_node node, bool *goto_top)
 {
 	newspapers.clear();
 	read_newspaper_menu(newspapers);
+	where_scope where(node_where(node));
 
 	char *title = (char*)(node.child("name").child_value());
 

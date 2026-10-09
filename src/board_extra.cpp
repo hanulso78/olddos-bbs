@@ -160,6 +160,131 @@ std::string current_board;		// 지금 들어가 있는 게시판 (SUB 로 구독할 때)
 board_scope::board_scope(const char *id) : old(current_board) { current_board = id; }
 board_scope::~board_scope() { current_board = old; }
 
+// ------------------------------------------------------------------
+// 지금 있는 곳 (US)
+// ------------------------------------------------------------------
+std::string current_where;
+
+static void write_where(const std::string &w)
+{
+	std::string path = std::string(getenv("HANULSO")) + "/tmp/" + tty + ".where";
+	FILE *fp = fopen(path.c_str(), "w");
+	if ( fp ) { fprintf(fp, "%s\n", w.c_str()); fclose(fp); }
+}
+
+where_scope::where_scope(const std::string &where) : old(current_where)
+{
+	current_where = where;
+	write_where(where);
+}
+
+where_scope::~where_scope()
+{
+	current_where = old;
+	write_where(old);
+}
+
+// 메뉴 항목의 이름에서 뒤의 " (go 이름)" 은 뗀다. 이름이 없으면 go 이름 (top 은 첫 화면)
+std::string node_where(pugi::xml_node node)
+{
+	std::string name = trim(node.child("name").child_value());
+	std::string::size_type p = name.rfind(" (");
+	if ( p != std::string::npos && p > 0 && name[name.size() - 1] == ')' ) name = name.substr(0, p);
+	if ( !name.empty() ) return name;
+	std::string go = node.attribute("go").value();
+	if ( go == "top" || go.empty() ) return "첫 화면";
+	return go;
+}
+
+// 화면 칸 폭에 맞춰 자르고 채운다 (완성형 한 글자 = 2 칸 = 2 바이트)
+static std::string pad_to(const std::string &s, int width)
+{
+	std::string t = string_truncate(s, width, "");
+	if ( (int)t.size() < width ) t += std::string(width - t.size(), ' ');
+	return t;
+}
+
+static std::string short_time(long sec)
+{
+	char buf[32];
+	if ( sec < 3600 ) snprintf(buf, sizeof(buf), "%ld분", sec / 60);
+	else snprintf(buf, sizeof(buf), "%ld:%02ld", sec / 3600, (sec / 60) % 60);
+	return buf;
+}
+
+struct online_row { std::string id, nick, where; long on, idle; bool me; };
+
+// US: 접속중인 회원, 있는 곳, 접속한 지, 쉬고 있는 시간. 번호로 회원 정보
+void show_online_users(void)
+{
+	int page = 0;
+	while ( 1 ) {
+		std::vector<online_row> list;
+		char pattern[1024];
+		snprintf(pattern, sizeof(pattern), "%s/tmp/*.tty", getenv("HANULSO"));
+		std::vector<std::string> files = find_files_time_sorted(pattern);
+		for ( unsigned int i = 0; i < files.size(); i++ ) {
+			online_row u;
+			if ( !read_tty_file(files[i], u.id) ) continue;
+			bool exist;
+			std::map<std::string, std::string> m = database::user_info((char*)u.id.c_str(), &exist);
+			u.nick = exist ? display_text(m["NICK_NAME"]) : u.id;
+			std::string node = split_string(split_file_name(files[i]), '.')[0];
+			u.me = node == tty;
+			u.on = (long)((ms_time_now() - file_ms_mtime(files[i])) / 1000);
+			// 터미널의 마지막 입력 시각 (w 명령의 IDLE 과 같은 방법)
+			struct stat st;
+			u.idle = stat(("/dev/pts/" + node).c_str(), &st) == 0 ? (long)(time(NULL) - st.st_atime) : 0;
+			std::string base = files[i].substr(0, files[i].size() - 4);		// .tty 를 뗀 것
+			u.where = display_text(trim(read_file((base + ".where").c_str())));
+			if ( u.where.empty() ) u.where = "-";
+			list.push_back(u);
+		}
+
+		const int PER = 14;
+		int pages = list.empty() ? 1 : ((int)list.size() + PER - 1) / PER;
+		if ( page >= pages ) page = pages - 1;
+		if ( page < 0 ) page = 0;
+
+		printf(ESC_CLEAR);
+		print_news_title("접속중인 회원");
+		printf("\033[5;1H");
+		printf("  \033[=7F지금 \033[=14F%d\033[=7F 명이 접속해 있습니다.\033[=15F\r\n\r\n", (int)list.size());
+		printf("  \033[=7F%3s  %s %s %6s %6s\033[=15F\r\n", "", pad_to("회원", 24).c_str(), pad_to("있는 곳", 28).c_str(), "접속", "쉼");
+		for ( int i = page * PER; i < (int)list.size() && i < (page + 1) * PER; i++ ) {
+			const online_row &u = list[i];
+			std::string name = string_truncate(u.nick, 12, "") + "(" + u.id + ")";
+			printf("  %s%3d  %s \033[=11F%s\033[=15F %6s %6s%s\r\n", u.me ? "\033[=14F" : "\033[=15F", i + 1,
+				pad_to(name, 24).c_str(), pad_to(u.where, 28).c_str(), short_time(u.on).c_str(),
+				u.idle >= 60 ? short_time(u.idle).c_str() : "", u.me ? "" : "");
+			printf("\033[=15F");
+		}
+
+		std::string q = "\r\n  번호: 회원 정보";
+		if ( pages > 1 ) {
+			char buf[64];
+			snprintf(buf, sizeof(buf), "  N/P: 쪽 (%d/%d)", page + 1, pages);
+			q += buf;
+		}
+		q += "  R: 새로 보기  Enter: 끝 >> ";
+		printf(ESC_ENG);
+		printf("%s", q.c_str());
+		char cmd[16];
+		line_input(cmd, 3);
+		std::string c = trim(cmd);
+		if ( c.empty() ) return;
+		if ( !strcasecmp(c.c_str(), "n") ) { page++; continue; }
+		if ( !strcasecmp(c.c_str(), "p") ) { page--; continue; }
+		if ( !strcasecmp(c.c_str(), "r") ) continue;
+		int k = atoi(c.c_str());
+		if ( k < 1 || k > (int)list.size() ) continue;
+		printf("\r\n");
+		print_user_info((char*)list[k - 1].id.c_str());
+		printf("\r\n[Enter] 를 누르세요.");
+		press_enter();
+	}
+}
+
 struct found_article {
 	std::string table, board, user_id, date_time, title;
 	std::string col;		// 날짜 칸 대신 보일 것 (BEST: 추천 / 조회)

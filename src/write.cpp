@@ -2,6 +2,7 @@
 
 int write_article(char *table_name)
 {	
+	where_scope where("±Û¾²±â: " + current_where);
 	char title[1024];
 	char buf[1024];
 	int ret = -1;

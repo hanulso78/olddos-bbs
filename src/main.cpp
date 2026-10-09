@@ -334,6 +334,7 @@ void show_menu(pugi::xml_node node)
 {
 	// 메뉴 화면에서는 게시판 밖 (SUB 는 구독 목록)
 	board_scope scope("");
+	where_scope where(node_where(node));
 	while (1) {
 		char *header = (char*)(node.child("header").child_value());
 		print_file(header);
@@ -387,6 +388,7 @@ void show_menu(pugi::xml_node node)
 								jump_go("top");
 							}
 #else
+                            where_scope where(node_where(node2));
                             char buf[1024];
                             snprintf(buf, sizeof(buf), "%s/bin/weather %s", getenv("HANULSO"), shell_quote(host_name).c_str());
                             fflush(stdout);
@@ -458,6 +460,7 @@ void show_board(pugi::xml_node node)
 
 	// 이 게시판 안에 있는 동안 (SUB 로 구독)
 	board_scope scope(table_name);
+	where_scope where(node_where(node));
 
 	// 첨부 파일 업로드를 지원하는지의 여부
 	char *value = (char*)(node.child("attachment").child_value());
@@ -1636,6 +1639,8 @@ int host_close (void)
 	char buf[1024];
     sprintf(buf,"%s/tmp/%s.tty", getenv("HANULSO"), tty);
 	unlink(buf);
+	sprintf(buf,"%s/tmp/%s.where", getenv("HANULSO"), tty);
+	unlink(buf);
 
 	// 현재 접속자에 의해 임시로 생성(복사)된 파일이 있다면 삭제..
 	// 파일 다운로드시 임시 파일 복사중 통신 끊겨 쓰레기로 남아 있는 파일들..
@@ -1690,6 +1695,7 @@ bool jump_go(std::string go)
 					jump_go("top");
 				}
 #else
+				where_scope where(node_where(node));
 				char buf[1024];
                 snprintf(buf, sizeof(buf), "%s/bin/weather %s", getenv("HANULSO"), shell_quote(host_name).c_str());
 				fflush(stdout);
@@ -1887,38 +1893,7 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 
 		// 접속 회원 목록
 		} else if ( !strcasecmp(args[0].c_str(), "us") ) {
-			printf("\r\n");
-
-			char buf[1024];
-			sprintf(buf, "%s/tmp/*.tty", getenv("HANULSO"), tty);
-			std::vector<std::string> files = find_files_time_sorted(buf);
-
-			printf("접속중인 회원 목록 입니다.");
-
-			for(int i=0; i<files.size(); i++) {
-				std::string user_id;
-				if ( read_tty_file(files[i], user_id) ) {
-					bool exist;
-					std::map<std::string, std::string> user = database::user_info((char*)user_id.c_str(), &exist);
-
-					char buf[1024];
-					snprintf(buf, sizeof(buf), "%s(%s)", display_text(user["NICK_NAME"]).c_str(), user["USER_ID"].c_str());
-				
-					std::string node = split_string(split_file_name(files[i]), '.')[0];
-
-					char buf2[1024];
-					sprintf(buf2, "접속노드: pts/%s", node.c_str());
-
-					long login_time = file_ms_mtime(files[i]);
-					long now_time = ms_time_now();
-
-					printf("\r\n%-25s %-20s 사용시간: %s", 
-						buf, buf2, ms_time_to_string(now_time-login_time).c_str());
-				}
-			}
-
-			printf("\r\n[Enter] 를 누르세요.");
-			press_enter();
+			show_online_users();
 
 		// 시스템 정보
 		} else if ( !strcasecmp(args[0].c_str(), "sys") ) {
@@ -2140,6 +2115,7 @@ bool run_menu_program(pugi::xml_node node, const std::string &type)
 		return true;
 	}
 
+	where_scope where(node_where(node));
 	if ( !strcasecmp(type.c_str(), "biorhythm") ) {
 		printf(ESC_CLEAR);
 		// 다른 생활정보 화면과 같은 타이틀
