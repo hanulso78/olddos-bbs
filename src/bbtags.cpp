@@ -480,6 +480,57 @@ static std::string new_of(const std::string &door)
 	return "";
 }
 
+// 지금 날씨 [weather] 와 그 지역 [weather_place]
+//   PE 에서 정한 내 지역 (member.REGION "시도|시군구"), 없으면 접속한 곳의 IP 로 찾은 지역 (하루 캐시),
+//   둘 다 없거나 아직 받는 중이면 서울
+static std::string hex_of(const std::string &s)
+{
+	static const char *h = "0123456789abcdef";
+	std::string o;
+	for (unsigned int i=0; i<s.size(); i++) { o += h[(unsigned char)s[i] >> 4]; o += h[(unsigned char)s[i] & 15]; }
+	return o;
+}
+
+static void weather_now(std::string &place, std::string &value)
+{
+	std::string bin = std::string(getenv("HANULSO")) + "/bin/";
+	std::string region;
+	if ( login_user_id[0] ) {
+		std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)("SELECT REGION FROM member WHERE USER_ID='" +
+			database::escape(login_user_id) + "'").c_str());
+		if ( !r.empty() ) region = r[0]["REGION"];
+	}
+	if ( region.empty() ) {
+		std::string host = remote_host_of_tty();
+		bool ok = !host.empty() && host.size() <= 64;
+		for (unsigned int i=0; ok && i<host.size(); i++) {
+			char c = host[i];
+			if ( !isalnum((unsigned char)c) && c != '.' && c != ':' && c != '-' ) ok = false;
+		}
+		if ( ok ) {
+			std::string key = host;
+			std::replace(key.begin(), key.end(), ':', '_');
+			std::string g = slow_value("geo_" + key, bin + "weather --locate " + shell_quote(host), 86400);
+			if ( g != "-" ) region = g;
+		}
+	}
+	std::string line;
+	std::string::size_type bar = region.find('|');
+	if ( bar != std::string::npos ) {
+		line = slow_value("weather_" + hex_of(region), bin + "weather --now " + shell_quote(region.substr(0, bar)) + " " +
+			shell_quote(region.substr(bar + 1)), 1800);
+	}
+	if ( line.empty() ) line = slow_value("weather", bin + "weather --now", 1800);
+	bar = line.find('|');
+	if ( bar == std::string::npos ) {		// 예전 캐시 (서울)
+		place = line.empty() ? "" : "서울";
+		value = line;
+	} else {
+		place = line.substr(0, bar);
+		value = line.substr(bar + 1);
+	}
+}
+
 // replace_bbcode 가 모르는 태그. 모르는 이름이면 found = false (태그를 그대로 둔다)
 std::string bbtag_value(const std::string &name, bool *found)
 {
@@ -492,7 +543,11 @@ std::string bbtag_value(const std::string &name, bool *found)
 	if ( name == "since_days" ) return since_days();
 	if ( name == "random_tip" ) return random_tip();
 	std::string bin = std::string(getenv("HANULSO")) + "/bin/";
-	if ( name == "weather" ) return slow_value("weather", bin + "weather --now", 1800);
+	if ( name == "weather" || name == "weather_place" ) {
+		std::string place, value;
+		weather_now(place, value);
+		return name == "weather" ? value : place;
+	}
 	if ( name == "usd_rate" ) return slow_value("usd_rate", bin + "exchange --usd", 3600);
 
 	std::map<std::string, std::string> &v = shared_values();

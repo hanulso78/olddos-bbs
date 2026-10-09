@@ -1,4 +1,5 @@
 #include "main.h"
+#include "regions.h"
 
 // ------------------------------------------------------------------
 // ³» Á¤º¸ °íÄ¡±â (PE)
@@ -6,6 +7,7 @@
 //   ºñ¹Ð¹øÈ£´Â Áö±Ý ºñ¹Ð¹øÈ£¸¦ È®ÀÎÇÑ µÚ, °¡¸° Ã¤ µÎ ¹ø ¹Þ´Â´Ù (°¡ÀÔ°ú °°Àº ±ÔÄ¢: 8 ÀÚ ÀÌ»ó, ¿µ¹® + Æ¯¼ö ¹®ÀÚ)
 //   Á¤º¸ °ø°³ (member.IS_OPEN): 1 ÀÌ¸é ´Ù¸¥ È¸¿øÀÇ PF ¿¡ ÀÌ¸ÞÀÏÀÌ º¸ÀÎ´Ù (0 ÀÌ¸é º»ÀÎ°ú ¿î¿µÀÚ¸¸)
 //   ÀÚ±â¼Ò°³ (member.INTRO): PF ¿¡ ÇÑ ÁÙ
+//   ³» Áö¿ª (member.REGION "½Ãµµ|½Ã±º±¸"): ´ë¹®ÀÇ ³¯¾¾. ºñ¿ì¸é Á¢¼ÓÇÑ °÷ÀÇ IP ·Î ÁüÀÛ
 // ------------------------------------------------------------------
 
 #define P_W		"\033[=15F"
@@ -15,16 +17,22 @@
 #define P_R		"\033[=12F"
 #define P_GR	"\033[=10F"
 
-// ¿¹Àü member Ç¥¿¡ INTRO Ä­À» ´õÇÑ´Ù (Ã³À½ ÇÑ ¹ø)
+// ¿¹Àü member Ç¥¿¡ INTRO, REGION Ä­À» ´õÇÑ´Ù (Ã³À½ ÇÑ ¹ø)
 void profile_upgrade(void)
 {
-	bool ok;
-	std::string n = database::fetch((char*)"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
-			"AND TABLE_NAME='member' AND COLUMN_NAME='INTRO'", &ok);
-	if ( ok && atoi(n.c_str()) == 0 ) {
-		mysql_query(mysql, "ALTER TABLE member ADD COLUMN INTRO VARCHAR(100) NOT NULL DEFAULT ''");
+	static const char *cols[][2] = {
+		{ "INTRO", "ALTER TABLE member ADD COLUMN INTRO VARCHAR(100) NOT NULL DEFAULT ''" },
+		{ "REGION", "ALTER TABLE member ADD COLUMN REGION VARCHAR(60) NOT NULL DEFAULT ''" },
+	};
+	for (unsigned int i=0; i<sizeof(cols)/sizeof(cols[0]); i++) {
+		bool ok;
+		std::string q = std::string("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+				"AND TABLE_NAME='member' AND COLUMN_NAME='") + cols[i][0] + "'";
+		std::string n = database::fetch((char*)q.c_str(), &ok);
+		if ( ok && atoi(n.c_str()) == 0 ) mysql_query(mysql, cols[i][1]);
 	}
 }
+
 
 static void note(const char *color, const char *text)
 {
@@ -132,6 +140,90 @@ static bool change_email(char *user_id, const std::string &cur)
 	}
 }
 
+// "½Ãµµ|½Ã±º±¸" -> "½Ã±º±¸ (½Ãµµ)"
+static std::string region_label(const std::string &r)
+{
+	std::string::size_type bar = r.find('|');
+	if ( bar == std::string::npos ) return r;
+	return r.substr(bar + 1) + " " P_G "(" + r.substr(0, bar) + ")" P_W;
+}
+
+// Á¢¼ÓÇÑ °÷À¸·Î ÁüÀÛÇÑ Áö¿ª (´ë¹® ³¯¾¾°¡ ¹Þ¾Æ µÐ °Í)
+static std::string guessed_region(void)
+{
+	std::string host = remote_host_of_tty();
+	std::replace(host.begin(), host.end(), ':', '_');
+	if ( host.empty() || host.find('/') != std::string::npos ) return "";
+	std::string g = trim(read_file((std::string(getenv("HANULSO")) + "/tmp/tag_geo_" + host + ".cache").c_str()));
+	return g == "-" ? "" : g;
+}
+
+// ¹øÈ£ ¸ñ·ÏÀ» ¿©·¯ ÁÙ·Î (ÇÑ Ä­ Æø width)
+static void print_choices(const std::vector<std::string> &names, int cols, int width)
+{
+	for (unsigned int i=0; i<names.size(); i++) {
+		if ( i % cols == 0 ) printf("\r\n  ");
+		char num[8];
+		snprintf(num, sizeof(num), "%2d", i + 1);
+		std::string cell = std::string(P_Y) + num + P_W ". " + names[i];
+		printf("%s%s", cell.c_str(), std::string(width > (int)names[i].size() + 4 ? width - names[i].size() - 4 : 1, ' ').c_str());
+	}
+}
+
+static bool change_region(char *user_id, const std::string &cur)
+{
+	printf("\r\n  " P_G "´ë¹®ÀÇ ³¯¾¾¸¦ ÀÌ Áö¿ªÀ¸·Î º¸¿© ÁÝ´Ï´Ù. ºñ¿ö µÎ¸é Á¢¼ÓÇÑ °÷À¸·Î ÁüÀÛÇÕ´Ï´Ù." P_W);
+	std::string key = ask_line("Áö¿ª ÀÌ¸§ (¿¹: ¼º³², °­³²±¸. Enter: ½Ã/µµ¿¡¼­ °í¸£±â, - : ºñ¿ì±â) : ", 20, true);
+	if ( key == "-" ) {
+		set_column(user_id, "REGION", "");
+		note(P_GR, "ºñ¿ü½À´Ï´Ù. Á¢¼ÓÇÑ °÷À¸·Î ÁüÀÛÇÕ´Ï´Ù.");
+		return true;
+	}
+	std::vector<int> found;
+	if ( !key.empty() ) {
+		for (int i=0; i<region_count; i++) {
+			if ( strstr(regions[i].name, key.c_str()) || strstr(regions[i].sido, key.c_str()) ) found.push_back(i);
+		}
+		if ( found.empty() ) { note(P_R, "±×·± Áö¿ªÀÌ ¾ø½À´Ï´Ù."); return false; }
+		if ( found.size() > 40 ) { note(P_R, "³Ê¹« ¸¹½À´Ï´Ù. ´õ ÀÚ¼¼È÷ ÃÄ ÁÖ¼¼¿ä."); return false; }
+	} else {
+		std::vector<std::string> sidos;
+		for (int i=0; i<region_count; i++) {
+			if ( std::find(sidos.begin(), sidos.end(), regions[i].sido) == sidos.end() ) sidos.push_back(regions[i].sido);
+		}
+		printf(ESC_CLEAR);
+		print_news_title("³» Áö¿ª °í¸£±â");
+		printf("[4;1H");
+		print_choices(sidos, 3, 24);
+		int s = atoi(ask_line("\r\n  ½Ã/µµ ¹øÈ£ (Enter: Ãë¼Ò) : ", 2, false).c_str());
+		if ( s < 1 || s > (int)sidos.size() ) return false;
+		for (int i=0; i<region_count; i++) {
+			if ( sidos[s - 1] == regions[i].sido ) found.push_back(i);
+		}
+	}
+	int k = found[0];
+	if ( found.size() > 1 ) {
+		std::vector<std::string> names;
+		for (unsigned int i=0; i<found.size(); i++) {
+			std::string n = regions[found[i]].name;
+			if ( !key.empty() ) n += std::string("(") + std::string(regions[found[i]].sido).substr(0, 4) + ")";
+			names.push_back(n);
+		}
+		printf(ESC_CLEAR);
+		print_news_title("³» Áö¿ª °í¸£±â");
+		printf("[4;1H");
+		print_choices(names, key.empty() ? 5 : 4, key.empty() ? 15 : 19);
+		int c = atoi(ask_line("\r\n  ¹øÈ£ (Enter: Ãë¼Ò) : ", 2, false).c_str());
+		if ( c < 1 || c > (int)found.size() ) return false;
+		k = found[c - 1];
+	}
+	std::string v = std::string(regions[k].sido) + "|" + regions[k].name;
+	set_column(user_id, "REGION", v);
+	note(P_GR, ("³» Áö¿ªÀ» " + std::string(regions[k].name) + " ·Î Á¤Çß½À´Ï´Ù.").c_str());
+	(void)cur;
+	return true;
+}
+
 bool edit_profile(char *user_id)
 {
 	profile_upgrade();
@@ -145,6 +237,7 @@ bool edit_profile(char *user_id)
 		}
 		bool open = atoi(u["IS_OPEN"].c_str()) != 0;
 		std::string intro = display_text(u["INTRO"]);
+		std::string region = display_text(u["REGION"]);
 
 		printf(ESC_CLEAR);
 		print_news_title("³» Á¤º¸ °íÄ¡±â");
@@ -158,6 +251,13 @@ bool edit_profile(char *user_id)
 		printf("    " P_Y "6" P_W ". Á¤º¸ °ø°³  %s\r\n", open ? P_GR "°ø°³" P_W "  " P_G "(´Ù¸¥ È¸¿øÀÇ PF ¿¡ ÀÌ¸ÞÀÏÀÌ º¸ÀÓ)" P_W
 				: P_G "ºñ°ø°³ (PF ¿¡¼­ ÀÌ¸ÞÀÏÀº ³ª¿Í ¿î¿µÀÚ¸¸)" P_W);
 		printf("    " P_Y "7" P_W ". ÀÚ±â¼Ò°³   %s\r\n", intro.empty() ? P_G "(¾øÀ½, PF ¿¡ ÇÑ ÁÙ·Î º¸ÀÔ´Ï´Ù)" P_W : intro.c_str());
+		if ( !region.empty() ) {
+			printf("    " P_Y "8" P_W ". ³» Áö¿ª    %s\r\n", region_label(region).c_str());
+		} else {
+			std::string g = guessed_region();
+			printf("    " P_Y "8" P_W ". ³» Áö¿ª    " P_G "%s" P_W "\r\n",
+				g.empty() ? "(Á¤ÇÏÁö ¾ÊÀ½, ´ë¹® ³¯¾¾´Â ¼­¿ï)" : ("(Á¤ÇÏÁö ¾ÊÀ½, Á¢¼ÓÇÑ °÷À¸·Î ÁüÀÛ: " + display_text(g.substr(g.find('|') + 1)) + ")").c_str());
+		}
 
 		std::string c = ask_line("°íÄ¥ ¹øÈ£ (Enter: ±×¸¸) >> ", 1, false);
 		if ( c.empty() || c == "0" || !strcasecmp(c.c_str(), "p") || !strcasecmp(c.c_str(), "q") ) return true;
@@ -177,6 +277,7 @@ bool edit_profile(char *user_id)
 			note(P_GR, open ? "ºñ°ø°³·Î ¹Ù²å½À´Ï´Ù." : "°ø°³·Î ¹Ù²å½À´Ï´Ù.");
 			done = true;
 			break;
+		case 8: done = change_region(user_id, region); break;
 		case 7: {
 			printf("\r\n  " P_G "Áö±Ý: %s" P_W, intro.empty() ? "(¾øÀ½)" : intro.c_str());
 			std::string t = ask_line("ÀÚ±â¼Ò°³ ÇÑ ÁÙ (Enter: ±×´ë·Î, - : Áö¿ì±â) : ", 60, true);

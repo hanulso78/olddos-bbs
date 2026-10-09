@@ -58,6 +58,7 @@ int main(int argc, char **argv)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_log ( NO INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, "
 			"USER_ID VARCHAR(50) NOT NULL, NODE VARCHAR(16) NOT NULL, DATE_TIME DATETIME NOT NULL, KEY IDX_DATE (DATE_TIME) )");
 	login_log_upgrade();
+	profile_upgrade();		// member.INTRO, REGION
 	// 로그인 실패 (같은 아이디로 10 분 안에 5 번 틀리면 10 분 잠금)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_fail ( USER_ID VARCHAR(50) NOT NULL PRIMARY KEY, "
 			"FAILS INT NOT NULL, LAST DATETIME NOT NULL )");
