@@ -1897,77 +1897,7 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 
 		// 시스템 정보
 		} else if ( !strcasecmp(args[0].c_str(), "sys") ) {
-			printf("\r\n");
-#if 0
-			ioctl(0, TCSETAF, &sys_term);
-			system("lsb_release -d");
-			printf("Database:\t"); fflush(stdout);
-			system("mysql --version|awk '{ print $5 }'|awk -F\\, '{ print $1 }'");
-			printf("Freespace:\t"); fflush(stdout);
-			system("df -h --total | grep total | tr -s ' ' | cut -f 4 -d ' '");
-			//printf("Freemem:\t"); fflush(stdout);
-			//system("free -m | tr -s ' ' | cut -f 4 -d ' ' | sed -n 2p");
-			system("sed '1q;d' < /proc/meminfo");
-			system("sed '2q;d' < /proc/meminfo");
-			ioctl(0, TCSETAF, &curr_term);
-#else
-			printf("시스템 정보를 표시합니다.");
-
-			bool success;
-			std::vector<std::string> lines = exec_command("awk '{print $1}' /proc/uptime", &success);
-			long sec = lines.size() > 0 ? atol(lines[0].c_str()) : 0;
-
-			printf("\r\n%-15s: %d일 %02d:%02d:%02d 경과", "가동시간", sec/86400, sec%86400/3600, (sec%3600)/60, sec%60);
-
-			std::string dist_name = trim(read_file("/etc/system-release"));
-			printf("\r\n%-15s: %s", "배포판", dist_name.c_str());
-
-			std::string txt = trim(read_file("/proc/version"));
-			std::vector<std::string> tokens = split_string(txt, ' ');
-			if ( tokens.size() >= 3 ) {
-				printf("\r\n%-15s: %s %s %s", "커널", tokens[0].c_str(), tokens[1].c_str(), tokens[2].c_str());
-			}
-
-			lines = exec_command("mysql --version", &success);
-			if ( lines.size() > 0 ) {
-				tokens = split_string(lines[0], ',');
-				if ( tokens.size() > 0 ) {
-					printf("\r\n%-15s: %s", "데이타베이스", tokens[0].c_str());
-				}
-			}
-
-			lines = exec_command("df -h --total | tail -n 1", &success);
-			char tmp[32] = "";
-			char tmp2[32] = "";
-			char tmp3[32] = "";
-			char tmp4[32] = "";
-			char tmp5[32] = "";
-			if ( lines.size() > 0 ) {
-				sscanf(lines[0].c_str(), "%31s %31s %31s %31s %31s", tmp, tmp2, tmp3, tmp4, tmp5);
-			}
-			printf("\r\n%-15s: %s", "전체하드용량", tmp2);
-			printf("\r\n%-15s: %s", "남은하드용량", tmp4);
-			//txt = trim(read_file("/sys/block/sda/size"));
-			//printf("\r\n%-15s: %d GB", "하드용량", atoi(txt.c_str())/1024/1024);
-			
-			txt = trim(read_file("/proc/meminfo"));
-			lines = split_string(txt, '\n');
-			for(int i=0; i<lines.size(); i++) {
-				tokens = split_string(lines[i], ':');
-				if (trim(tokens[0]) == "MemTotal") {
-					printf("\r\n%-15s: %dM (%dG)", 
-						"전체메모리용량",
-						atoi(tokens[1].c_str())/1024,
-						atoi(tokens[1].c_str())/1024/1024);
-				}
-				if (trim(tokens[0]) == "MemFree") {
-					printf("\r\n%-15s: %dM", "남은메모리용량", atoi(tokens[1].c_str())/1024);
-				}
-			}
-
-#endif
-			printf("\r\n[Enter] 를 누르세요.");
-			press_enter();
+			show_system_info();
 
 		// 회원정보 보기
 		} else if ( !strcasecmp(args[0].c_str(), "pf") ) {

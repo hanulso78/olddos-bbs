@@ -229,6 +229,7 @@ struct where_scope {
 };
 std::string node_where(pugi::xml_node node);
 void show_online_users(void);
+void show_system_info(void);
 void subscribe_command(void);
 void notify_subscribers(const char *table, int no);
 // ≈ı«•

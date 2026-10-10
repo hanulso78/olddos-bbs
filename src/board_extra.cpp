@@ -1,4 +1,5 @@
 #include "main.h"
+#include <sys/statvfs.h>
 #include <utmp.h>
 
 // ------------------------------------------------------------------
@@ -1035,4 +1036,139 @@ void show_polls(void)
 			if ( login_user_is_admin ) new_poll();
 		} else if ( is_number(c) ) view_poll(atoi(c.c_str()));
 	}
+}
+
+// ------------------------------------------------------------------
+// SYS: 서버와 BBS 현황
+// ------------------------------------------------------------------
+static std::string size_text(double bytes)
+{
+	char buf[32];
+	if ( bytes >= 1024.0 * 1024 * 1024 * 1024 ) snprintf(buf, sizeof(buf), "%.1fT", bytes / (1024.0 * 1024 * 1024 * 1024));
+	else if ( bytes >= 100.0 * 1024 * 1024 * 1024 ) snprintf(buf, sizeof(buf), "%.0fG", bytes / (1024.0 * 1024 * 1024));
+	else if ( bytes >= 1024.0 * 1024 * 1024 ) snprintf(buf, sizeof(buf), "%.1fG", bytes / (1024.0 * 1024 * 1024));
+	else if ( bytes >= 1024.0 * 1024 ) snprintf(buf, sizeof(buf), "%.0fM", bytes / (1024.0 * 1024));
+	else snprintf(buf, sizeof(buf), "%.0fK", bytes / 1024.0);
+	return buf;
+}
+
+// 막대 (16 칸 = 32 글자 폭): 쓴 만큼 ■, 80% 를 넘으면 빨강
+static void usage_bar(const char *label, double used, double total, const std::string &extra)
+{
+	int pct = total > 0 ? (int)(used * 100 / total + 0.5) : 0;
+	int n = total > 0 ? (int)(used * 16 / total + 0.5) : 0;
+	if ( n > 16 ) n = 16;
+	printf("    \033[=7F%-11s\033[=15F%s", label, pct >= 80 ? "\033[=12F" : "\033[=10F");
+	for ( int i = 0; i < 16; i++ ) {
+		if ( i == n ) printf("\033[=8F");
+		printf(i < n ? "■" : "□");
+	}
+	printf("\033[=15F %s / %s (%d%%)%s\r\n", size_text(used).c_str(), size_text(total).c_str(), pct, extra.c_str());
+}
+
+static std::string first_line_of(const std::string &path)
+{
+	std::vector<std::string> l = split_string(read_file(path.c_str()), '\n');
+	return l.empty() ? "" : trim(l[0]);
+}
+
+void show_system_info(void)
+{
+	where_scope where("시스템 정보");
+	printf(ESC_CLEAR);
+	print_news_title("시스템 정보");
+	printf("\033[4;1H");
+
+	// ---- 서버
+	printf("  \033[=14F◆ 서버\033[=15F\r\n");
+	std::string dist = first_line_of("/etc/system-release");
+	if ( dist.empty() ) {
+		// 다른 배포판: os-release 의 PRETTY_NAME="..."
+		std::vector<std::string> os = split_string(read_file("/etc/os-release"), '\n');
+		for ( unsigned int i = 0; i < os.size(); i++ ) {
+			if ( os[i].compare(0, 12, "PRETTY_NAME=") != 0 ) continue;
+			dist = os[i].substr(12);
+			if ( dist.size() >= 2 && dist[0] == '"' ) dist = dist.substr(1, dist.size() - 2);
+		}
+	}
+	printf("    \033[=7F%-11s\033[=15F%s\r\n", "배포판", string_truncate(dist, 64, "").c_str());
+
+	std::vector<std::string> v = split_string(trim(read_file("/proc/version")), ' ');
+	if ( v.size() >= 3 ) printf("    \033[=7F%-11s\033[=15F%s %s\r\n", "커널", v[0].c_str(), string_truncate(v[2], 58, "").c_str());
+
+	std::string cpu;
+	int cores = 0;
+	std::vector<std::string> ci = split_string(read_file("/proc/cpuinfo"), '\n');
+	for ( unsigned int i = 0; i < ci.size(); i++ ) {
+		std::string::size_type p = ci[i].find(':');
+		if ( p == std::string::npos ) continue;
+		std::string k = trim(ci[i].substr(0, p));
+		if ( k == "processor" ) cores++;
+		if ( k == "model name" && cpu.empty() ) cpu = trim(ci[i].substr(p + 1));
+	}
+	// 겹친 빈칸을 하나로
+	std::string c2;
+	for ( unsigned int i = 0; i < cpu.size(); i++ ) if ( !(cpu[i] == ' ' && !c2.empty() && c2[c2.size() - 1] == ' ') ) c2 += cpu[i];
+	char cb[128];
+	snprintf(cb, sizeof(cb), " x %d", cores);
+	printf("    \033[=7F%-11s\033[=15F%s%s\r\n", "CPU", string_truncate(c2, 56, "").c_str(), cores > 1 ? cb : "");
+
+	long sec = atol(first_line_of("/proc/uptime").c_str());
+	std::vector<std::string> la = split_string(first_line_of("/proc/loadavg"), ' ');
+	printf("    \033[=7F%-11s\033[=15F%ld일 %02ld:%02ld:%02ld", "가동 시간", sec / 86400, sec % 86400 / 3600, sec % 3600 / 60, sec % 60);
+	if ( la.size() >= 3 ) printf("      \033[=7F부하 (1/5/15 분)\033[=15F  %s  %s  %s", la[0].c_str(), la[1].c_str(), la[2].c_str());
+	printf("\r\n");
+
+	// ---- 메모리, 디스크
+	printf("  \033[=14F◆ 메모리 / 디스크\033[=15F\r\n");
+	std::map<std::string, double> mem;
+	std::vector<std::string> mi = split_string(read_file("/proc/meminfo"), '\n');
+	for ( unsigned int i = 0; i < mi.size(); i++ ) {
+		std::string::size_type p = mi[i].find(':');
+		if ( p != std::string::npos ) mem[trim(mi[i].substr(0, p))] = atof(mi[i].c_str() + p + 1) * 1024;
+	}
+	double total = mem["MemTotal"];
+	// MemAvailable 이 없는 옛 커널 (CentOS 6) 은 남은 것 + 버퍼 + 캐시
+	double avail = mem.count("MemAvailable") ? mem["MemAvailable"] : mem["MemFree"] + mem["Buffers"] + mem["Cached"];
+	usage_bar("메모리", total - avail, total, "");
+	if ( mem["SwapTotal"] > 0 ) usage_bar("스왑", mem["SwapTotal"] - mem["SwapFree"], mem["SwapTotal"], "");
+
+	struct statvfs fs;
+	if ( statvfs(getenv("HANULSO"), &fs) == 0 ) {
+		double dt = (double)fs.f_blocks * fs.f_frsize;
+		double du = (double)(fs.f_blocks - fs.f_bfree) * fs.f_frsize;
+		double da = (double)fs.f_bavail * fs.f_frsize;
+		usage_bar("디스크", du, dt, "  남음 " + size_text(da));
+	}
+
+	// ---- BBS
+	printf("  \033[=14F◆ BBS\033[=15F\r\n");
+	printf("    \033[=7F%-11s\033[=15F%s", "사이트", replace_bbcode("[host_name]").c_str());
+	std::string since = trim(replace_bbcode("[since_days]"));
+	if ( !since.empty() && since != "[since_days]" ) printf("  \033[=7F(연 지 \033[=15F%s\033[=7F 일째)\033[=15F", since.c_str());
+	printf("\r\n");
+	printf("    \033[=7F%-11s\033[=15F%s 명  \033[=7F(오늘 가입 %s, 다녀감 %s)\033[=15F  지금 접속 \033[=14F%s\033[=15F 명\r\n", "회원",
+		trim(replace_bbcode("[num_members]")).c_str(), trim(replace_bbcode("[today_members]")).c_str(),
+		trim(replace_bbcode("[today_visitors]")).c_str(), trim(replace_bbcode("[num_conns]")).c_str());
+	printf("    \033[=7F%-11s\033[=15F%s 개  \033[=7F(오늘 %s)\033[=15F\r\n", "글",
+		trim(replace_bbcode("[num_articles]")).c_str(), trim(replace_bbcode("[today_num_articles]")).c_str());
+
+	bool ok;
+	std::string dbsize = database::fetch((char*)"SELECT IFNULL(SUM(DATA_LENGTH + INDEX_LENGTH), 0) FROM information_schema.TABLES "
+		"WHERE TABLE_SCHEMA = DATABASE()", &ok);
+	std::string tables = database::fetch((char*)"SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()", &ok);
+	// "5.1.73" 또는 "11.8.6-MariaDB-0+deb13u1 from Debian"
+	std::string ver = mysql_get_server_info(mysql);
+	ver = ver.substr(0, ver.find(' '));
+	std::string server = "MySQL " + ver;
+	if ( ver.find("MariaDB") != std::string::npos ) server = "MariaDB " + ver.substr(0, ver.find('-'));
+	printf("    \033[=7F%-11s\033[=15F%s  \033[=7F(테이블 %s 개, %s)\033[=15F\r\n", "DB",
+		server.c_str(), tables.c_str(), size_text(atof(dbsize.c_str())).c_str());
+
+	char built[64];
+	snprintf(built, sizeof(built), "%s %s", __DATE__, __TIME__);
+	printf("    \033[=7F%-11s\033[=15F%s  \033[=7F(g++ %s)\033[=15F\r\n", "BBS 빌드", built, string_truncate(__VERSION__, 20, "").c_str());
+
+	printf("\r\n [Enter] 를 누르세요.");
+	press_enter();
 }
