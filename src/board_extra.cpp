@@ -1072,6 +1072,32 @@ static std::string first_line_of(const std::string &path)
 	return l.empty() ? "" : trim(l[0]);
 }
 
+static std::string q1(const std::string &q)
+{
+	bool ok;
+	return trim(database::fetch((char*)q.c_str(), &ok));
+}
+
+// 오늘 글이 많이 올라온 게시판 (읽을 수 있는 것만) 셋
+static std::string busy_boards(void)
+{
+	std::vector<pugi::xml_node> boards;
+	if ( menu_root ) readable_boards(menu_root, boards);
+	std::vector<std::pair<int, std::string> > list;
+	for ( unsigned int i = 0; i < boards.size(); i++ ) {
+		int n = atoi(q1(std::string("SELECT COUNT(*) FROM ") + boards[i].attribute("id").value() +
+			" WHERE DATE_TIME >= CURDATE()").c_str());
+		if ( n > 0 ) list.push_back(std::make_pair(-n, board_name(boards[i])));
+	}
+	std::sort(list.begin(), list.end());
+	std::string out;
+	for ( unsigned int i = 0; i < list.size() && i < 3; i++ ) {
+		if ( !out.empty() ) out += ", ";
+		out += string_truncate(list[i].second, 14, "") + " \033[=14F" + TO_STRING(-list[i].first) + "\033[=15F";
+	}
+	return out;
+}
+
 void show_system_info(void)
 {
 	where_scope where("시스템 정보");
@@ -1147,11 +1173,28 @@ void show_system_info(void)
 	std::string since = trim(replace_bbcode("[since_days]"));
 	if ( !since.empty() && since != "[since_days]" ) printf("  \033[=7F(연 지 \033[=15F%s\033[=7F 일째)\033[=15F", since.c_str());
 	printf("\r\n");
-	printf("    \033[=7F%-11s\033[=15F%s 명  \033[=7F(오늘 가입 %s, 다녀감 %s)\033[=15F  지금 접속 \033[=14F%s\033[=15F 명\r\n", "회원",
+	printf("    \033[=7F%-11s\033[=15F%s 명  \033[=7F(오늘 가입 %s, 다녀감 %s)\033[=15F\r\n", "회원",
 		trim(replace_bbcode("[num_members]")).c_str(), trim(replace_bbcode("[today_members]")).c_str(),
-		trim(replace_bbcode("[today_visitors]")).c_str(), trim(replace_bbcode("[num_conns]")).c_str());
+		trim(replace_bbcode("[today_visitors]")).c_str());
+	{
+		std::string today = q1("SELECT COUNT(*) FROM login_log WHERE DATE_TIME >= CURDATE()");
+		std::string month = q1("SELECT COUNT(*) FROM login_log WHERE DATE_TIME >= DATE_FORMAT(CURDATE(), '%Y-%m-01')");
+		std::string max_today = q1("SELECT MAX_ONLINE FROM stat_online WHERE DAY = CURDATE()");
+		std::vector<std::map<std::string, std::string> > mx = database::fetch_rows((char*)
+			"SELECT MAX_ONLINE, DATE_FORMAT(DAY, '%Y-%m-%d') AS D FROM stat_online ORDER BY MAX_ONLINE DESC, DAY DESC LIMIT 1");
+		printf("    \033[=7F%-11s\033[=15F지금 \033[=14F%s\033[=15F 명  \033[=7F(최대: 오늘 %s", "접속",
+			trim(replace_bbcode("[num_conns]")).c_str(), max_today.empty() ? "0" : max_today.c_str());
+		if ( !mx.empty() ) printf(", 역대 %s, %s", mx[0]["MAX_ONLINE"].c_str(), mx[0]["D"].c_str());
+		printf(")\033[=15F\r\n");
+		printf("    \033[=7F%-11s\033[=15F오늘 %s 번, 이번 달 %s 번\r\n", "로그인",
+			today.empty() ? "0" : today.c_str(), month.empty() ? "0" : month.c_str());
+	}
 	printf("    \033[=7F%-11s\033[=15F%s 개  \033[=7F(오늘 %s)\033[=15F\r\n", "글",
 		trim(replace_bbcode("[num_articles]")).c_str(), trim(replace_bbcode("[today_num_articles]")).c_str());
+	{
+		std::string busy = busy_boards();
+		printf("    \033[=7F%-11s\033[=15F%s\r\n", "오늘 활발", busy.empty() ? "\033[=7F(오늘 올라온 글이 없습니다)\033[=15F" : busy.c_str());
+	}
 
 	bool ok;
 	std::string dbsize = database::fetch((char*)"SELECT IFNULL(SUM(DATA_LENGTH + INDEX_LENGTH), 0) FROM information_schema.TABLES "
@@ -1164,6 +1207,21 @@ void show_system_info(void)
 	if ( ver.find("MariaDB") != std::string::npos ) server = "MariaDB " + ver.substr(0, ver.find('-'));
 	printf("    \033[=7F%-11s\033[=15F%s  \033[=7F(테이블 %s 개, %s)\033[=15F\r\n", "DB",
 		server.c_str(), tables.c_str(), size_text(atof(dbsize.c_str())).c_str());
+	if ( login_user_is_admin ) {
+		std::vector<std::string> bk = find_files((char*)(std::string(getenv("HANULSO")) + "/backup/bbs-*.sql.gz").c_str());
+		std::sort(bk.begin(), bk.end());		// 이름이 날짜순
+		printf("    \033[=7F%-11s\033[=15F", "DB 백업");
+		struct stat st;
+		if ( bk.empty() || stat(bk.back().c_str(), &st) != 0 ) {
+			printf("\033[=14F아직 없습니다\033[=7F (운영자 메뉴 16)\033[=15F\r\n");
+		} else {
+			char when[32];
+			strftime(when, sizeof(when), "%Y-%m-%d %H:%M", localtime(&st.st_mtime));
+			long days = (long)((time(NULL) - st.st_mtime) / 86400);
+			printf("%s%s\033[=15F  \033[=7F(%s, %s)\033[=15F\r\n", days >= 7 ? "\033[=14F" : "", when,
+				size_text((double)st.st_size).c_str(), days == 0 ? "오늘" : (TO_STRING(days) + " 일 전").c_str());
+		}
+	}
 
 	char built[64];
 	snprintf(built, sizeof(built), "%s %s", __DATE__, __TIME__);
