@@ -58,6 +58,7 @@ int main(int argc, char **argv)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_log ( NO INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY, "
 			"USER_ID VARCHAR(50) NOT NULL, NODE VARCHAR(16) NOT NULL, DATE_TIME DATETIME NOT NULL, KEY IDX_DATE (DATE_TIME) )");
 	login_log_upgrade();
+	friend_init();
 	profile_upgrade();		// member.INTRO, REGION
 	// 로그인 실패 (같은 아이디로 10 분 안에 5 번 틀리면 10 분 잠금)
 	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS login_fail ( USER_ID VARCHAR(50) NOT NULL PRIMARY KEY, "
@@ -194,6 +195,9 @@ int main(int argc, char **argv)
 			"', '" + database::escape(tty) + "', NOW(), '" + database::escape(remote_host_of_tty().c_str()) + "')";
 		if ( mysql_query(mysql, q.c_str()) == 0 ) login_log_no = (long)mysql_insert_id(mysql);
 	}
+
+	// 나를 친구로 둔 회원들에게 알리고, 접속 중인 내 친구를 첫 프롬프트에 보인다
+	friend_login_notify();
 
 	// 강제 종료 등으로 남은 오래된 임시 파일 정리 (한 시간에 한 번)
 	sweep_stale_tmp();
@@ -1894,6 +1898,10 @@ void prompt(char *cmd, bool enable_write, bool enable_del)
 		// 접속 회원 목록
 		} else if ( !strcasecmp(args[0].c_str(), "us") ) {
 			show_online_users();
+
+		// 친구
+		} else if ( !strcasecmp(args[0].c_str(), "fr") ) {
+			show_friends();
 
 		// 시스템 정보
 		} else if ( !strcasecmp(args[0].c_str(), "sys") ) {

@@ -230,6 +230,11 @@ struct where_scope {
 std::string node_where(pugi::xml_node node);
 void show_online_users(void);
 void show_system_info(void);
+// 친구 (FR): friend 표, 친구가 접속하면 알림
+void friend_init(void);
+void friend_login_notify(void);
+void show_friends(void);
+std::set<std::string> my_friends(void);
 void subscribe_command(void);
 void notify_subscribers(const char *table, int no);
 // 투표

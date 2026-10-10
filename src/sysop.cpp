@@ -329,7 +329,7 @@ static std::string find_member(const std::string &key)
 static rows_t id_columns(void)
 {
 	return rows_of("SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() "
-			"AND (COLUMN_NAME = 'USER_ID' OR COLUMN_NAME LIKE '%\\_USER\\_ID' OR COLUMN_NAME IN ('BY_ID', 'BLACK_ID', 'WHITE_ID'))");
+			"AND (COLUMN_NAME = 'USER_ID' OR COLUMN_NAME LIKE '%\\_USER\\_ID' OR COLUMN_NAME IN ('BY_ID', 'BLACK_ID', 'WHITE_ID', 'FRIEND_ID'))");
 }
 
 static bool valid_new_id(const std::string &id)

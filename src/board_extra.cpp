@@ -242,6 +242,7 @@ void show_online_users(void)
 			list.push_back(u);
 		}
 
+		std::set<std::string> friends = my_friends();
 		const int PER = 14;
 		int pages = list.empty() ? 1 : ((int)list.size() + PER - 1) / PER;
 		if ( page >= pages ) page = pages - 1;
@@ -254,7 +255,7 @@ void show_online_users(void)
 		printf("  \033[=7F%3s  %s %s %6s %6s\033[=15F\r\n", "", pad_to("회원", 24).c_str(), pad_to("있는 곳", 28).c_str(), "접속", "쉼");
 		for ( int i = page * PER; i < (int)list.size() && i < (page + 1) * PER; i++ ) {
 			const online_row &u = list[i];
-			std::string name = string_truncate(u.nick, 12, "") + "(" + u.id + ")";
+			std::string name = (friends.count(u.id) ? "★" : "") + string_truncate(u.nick, 12, "") + "(" + u.id + ")";
 			printf("  %s%3d  %s \033[=11F%s\033[=15F %6s %6s%s\r\n", u.me ? "\033[=14F" : "\033[=15F", i + 1,
 				pad_to(name, 24).c_str(), pad_to(u.where, 28).c_str(), short_time(u.on).c_str(),
 				u.idle >= 60 ? short_time(u.idle).c_str() : "", u.me ? "" : "");
@@ -268,6 +269,7 @@ void show_online_users(void)
 			q += buf;
 		}
 		q += "  R: 새로 보기  Enter: 끝 >> ";
+		if ( !friends.empty() ) printf("\r\n  \033[=7F★ 는 내 친구 (FR)\033[=15F");
 		printf(ESC_ENG);
 		printf("%s", q.c_str());
 		char cmd[16];
@@ -1229,4 +1231,174 @@ void show_system_info(void)
 
 	printf("\r\n [Enter] 를 누르세요.");
 	press_enter();
+}
+
+// ------------------------------------------------------------------
+// 친구 (FR)
+//   friend (USER_ID 가 FRIEND_ID 를 친구로). 친구가 접속하면 "◆ 친구 ... 님이 접속했습니다" 알림
+//   서로 친구면 ♥
+// ------------------------------------------------------------------
+#define MAX_FRIENDS 50
+
+void friend_init(void)
+{
+	mysql_query(mysql, "CREATE TABLE IF NOT EXISTS friend ( USER_ID VARCHAR(50) NOT NULL, FRIEND_ID VARCHAR(50) NOT NULL, "
+		"DATE_TIME DATETIME NOT NULL, PRIMARY KEY (USER_ID, FRIEND_ID), KEY IDX_FRIEND (FRIEND_ID) )");
+}
+
+std::set<std::string> my_friends(void)
+{
+	std::set<std::string> s;
+	std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)("SELECT FRIEND_ID FROM friend WHERE USER_ID='" +
+		database::escape(login_user_id) + "'").c_str());
+	for ( unsigned int i = 0; i < r.size(); i++ ) s.insert(r[i]["FRIEND_ID"]);
+	return s;
+}
+
+// 접속 중인 회원: 아이디 -> 있는 곳 (여러 곳이면 처음 것)
+static std::map<std::string, std::string> online_where(void)
+{
+	std::map<std::string, std::string> out;
+	char pattern[1024];
+	snprintf(pattern, sizeof(pattern), "%s/tmp/*.tty", getenv("HANULSO"));
+	std::vector<std::string> files = find_files_time_sorted(pattern);
+	for ( unsigned int i = 0; i < files.size(); i++ ) {
+		std::string id;
+		if ( !read_tty_file(files[i], id) || out.count(id) ) continue;
+		std::string w = display_text(trim(read_file((files[i].substr(0, files[i].size() - 4) + ".where").c_str())));
+		out[id] = w.empty() ? "-" : w;
+	}
+	return out;
+}
+
+void friend_login_notify(void)
+{
+	std::string me = login_user_id;
+	std::string line = "◆ 친구 " + string_truncate(nick_or_id(me), 20, "") + "(" + me + ") 님이 접속했습니다.";
+	std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)("SELECT USER_ID FROM friend WHERE FRIEND_ID='" +
+		database::escape(login_user_id) + "'").c_str());
+	for ( unsigned int i = 0; i < r.size(); i++ ) {
+		if ( r[i]["USER_ID"] != me ) notify_online(r[i]["USER_ID"], line, true);
+	}
+
+	// 접속 중인 내 친구 (첫 프롬프트에 알림으로)
+	std::set<std::string> fr = my_friends();
+	std::map<std::string, std::string> on = online_where();
+	std::string names;
+	int n = 0;
+	for ( std::set<std::string>::iterator it = fr.begin(); it != fr.end(); ++it ) {
+		if ( !on.count(*it) || *it == me ) continue;
+		if ( n < 4 ) names += (names.empty() ? "" : ", ") + string_truncate(nick_or_id(*it), 12, "");
+		n++;
+	}
+	if ( n > 0 ) {
+		std::string l = "◆ 접속 중인 친구 " + TO_STRING(n) + " 명: " + names + (n > 4 ? " ..." : "") + "  (FR)";
+		std::string path = std::string(getenv("HANULSO")) + "/tmp/" + tty + ".notice";
+		FILE *fp = fopen(path.c_str(), "a");
+		if ( fp ) { fprintf(fp, "%s\n", l.c_str()); fclose(fp); }
+	}
+}
+
+// 아이디나 닉네임으로 회원 찾기 (정확히 같은 것)
+static std::string find_member_id(const std::string &key)
+{
+	std::string k = database::escape(key.c_str());
+	std::vector<std::map<std::string, std::string> > r = database::fetch_rows((char*)("SELECT USER_ID FROM member WHERE USER_ID='" + k +
+		"' OR NICK_NAME='" + k + "' LIMIT 2").c_str());
+	return r.size() == 1 ? r[0]["USER_ID"] : (r.size() > 1 ? r[0]["USER_ID"] : "");
+}
+
+void show_friends(void)
+{
+	where_scope where("친구 목록");
+	std::string msg;
+	while ( 1 ) {
+		std::string me = database::escape(login_user_id);
+		std::vector<std::map<std::string, std::string> > list = database::fetch_rows((char*)(
+			"SELECT f.FRIEND_ID, IFNULL(m.NICK_NAME, '') AS NICK, IFNULL(DATE_FORMAT(m.LASTLOGIN_DATETIME, '%Y-%m-%d'), '') AS LAST, "
+			"(SELECT COUNT(*) FROM friend b WHERE b.USER_ID = f.FRIEND_ID AND b.FRIEND_ID = f.USER_ID) AS MUTUAL "
+			"FROM friend f LEFT JOIN member m ON m.USER_ID = f.FRIEND_ID WHERE f.USER_ID = '" + me + "' ORDER BY f.DATE_TIME").c_str());
+		std::map<std::string, std::string> on = online_where();
+		int fans = atoi(database::fetch_rows((char*)("SELECT COUNT(*) AS N FROM friend WHERE FRIEND_ID = '" + me + "'").c_str())[0]["N"].c_str());
+
+		// 접속 중인 친구 먼저
+		std::vector<int> order;
+		for ( int pass = 0; pass < 2; pass++ ) {
+			for ( unsigned int i = 0; i < list.size(); i++ ) {
+				if ( (on.count(list[i]["FRIEND_ID"]) > 0) == (pass == 0) ) order.push_back(i);
+			}
+		}
+		int online = 0;
+		for ( unsigned int i = 0; i < list.size(); i++ ) if ( on.count(list[i]["FRIEND_ID"]) ) online++;
+
+		printf(ESC_CLEAR);
+		print_news_title("친구");
+		printf("\033[5;1H");
+		printf("  \033[=7F친구 \033[=15F%d\033[=7F 명, 지금 접속 \033[=14F%d\033[=7F 명.  나를 친구로 둔 회원 %d 명\033[=15F\r\n\r\n",
+			(int)list.size(), online, fans);
+		if ( list.empty() ) {
+			printf("  \033[=7F아직 친구가 없습니다. A 아이디 (또는 닉네임) 로 더하세요.\r\n");
+			printf("  친구가 접속하면 알려 드리고, US 에서 ★ 로 보입니다.\033[=15F\r\n");
+		}
+		for ( unsigned int k = 0; k < order.size() && k < 15; k++ ) {
+			std::map<std::string, std::string> &f = list[order[k]];
+			std::string id = f["FRIEND_ID"];
+			std::string nick = display_text(f["NICK"]);
+			std::string name = string_truncate(nick.empty() ? "(없는 회원)" : nick, 12, "") + "(" + id + ")";
+			bool mutual = atoi(f["MUTUAL"].c_str()) > 0;
+			printf("  %3d  %s%s\033[=15F %s ", k + 1, on.count(id) ? "\033[=15F" : "\033[=7F", pad_to(name, 24).c_str(),
+				mutual ? "\033[=12F♥\033[=15F" : "  ");
+			if ( on.count(id) ) printf("\033[=14F접속 중\033[=15F  \033[=11F%s\033[=15F", string_truncate(on[id], 34, "").c_str());
+			else printf("\033[=7F마지막 접속 %s\033[=15F", f["LAST"].empty() ? "-" : f["LAST"].c_str());
+			printf("\r\n");
+		}
+		if ( order.size() > 15 ) printf("  \033[=7F... 그 밖에 %d 명\033[=15F\r\n", (int)order.size() - 15);
+		if ( !list.empty() ) printf("\r\n  \033[=7F♥ 는 서로 친구\033[=15F\r\n");
+		if ( !msg.empty() ) { printf("\r\n  %s\033[=15F", msg.c_str()); msg = ""; }
+
+		printf(ESC_ENG);
+		printf("\r\n  A 아이디: 더하기  D 번호: 빼기  번호: 회원 정보  Enter: 끝 >> ");
+		char cmd[64];
+		line_input(cmd, 40);
+		std::string c = trim(cmd);
+		if ( c.empty() ) return;
+		char op = toupper(c[0]);
+		std::string arg = c.size() > 1 ? trim(c.substr(1)) : "";
+
+		if ( op == 'A' && (c.size() == 1 || c[1] == ' ') ) {
+			if ( arg.empty() ) {
+				printf(ESC_HAN);
+				printf("\r\n  더할 친구의 아이디나 닉네임 : ");
+				char buf[64];
+				line_input(buf, 40);
+				printf(ESC_ENG);
+				arg = trim(buf);
+				if ( arg.empty() ) continue;
+			}
+			std::string id = find_member_id(arg);
+			if ( id.empty() ) { msg = "\033[=12F'" + display_text(arg) + "' 회원이 없습니다."; continue; }
+			if ( id == login_user_id ) { msg = "\033[=12F나는 친구로 더할 수 없습니다."; continue; }
+			if ( (int)list.size() >= MAX_FRIENDS ) { msg = "\033[=12F친구는 " + TO_STRING(MAX_FRIENDS) + " 명까지입니다."; continue; }
+			std::string q = "INSERT IGNORE INTO friend (USER_ID, FRIEND_ID, DATE_TIME) VALUES ('" + me + "', '" +
+				database::escape(id.c_str()) + "', NOW())";
+			mysql_query(mysql, q.c_str());
+			msg = "\033[=10F" + string_truncate(nick_or_id(id), 20, "") + "(" + id + ") 님을 친구로 더했습니다.";
+		} else if ( op == 'D' && c.size() > 1 ) {
+			int k = atoi(arg.c_str());
+			if ( k < 1 || k > (int)order.size() || k > 15 ) continue;
+			std::string id = list[order[k - 1]]["FRIEND_ID"];
+			std::string q = "DELETE FROM friend WHERE USER_ID='" + me + "' AND FRIEND_ID='" + database::escape(id.c_str()) + "'";
+			mysql_query(mysql, q.c_str());
+			msg = "\033[=10F" + id + " 님을 친구에서 뺐습니다.";
+		} else {
+			int k = atoi(c.c_str());
+			if ( k < 1 || k > (int)order.size() || k > 15 ) continue;
+			std::string id = list[order[k - 1]]["FRIEND_ID"];
+			if ( !database::exist_user_id((char*)id.c_str()) ) continue;
+			printf("\r\n");
+			print_user_info((char*)id.c_str());
+			printf("\r\n[Enter] 를 누르세요.");
+			press_enter();
+		}
+	}
 }
